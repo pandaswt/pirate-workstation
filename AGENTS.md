@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-单文件 HTML 个人工作台应用（海贼王 One Piece 主题），含 10 个功能模块、AI 快捷录入、Supabase 云同步（含手动同步按钮）、PWA 离线支持、移动端响应式适配。
+单文件 HTML 个人工作台应用（海贼王 One Piece 主题），含 10 个功能模块、AI 快捷录入、Supabase 云同步（含手动同步/拉取按钮 + Realtime 自动拉取）、PWA 离线支持、移动端响应式适配。
 
 ## 技术栈
 
@@ -16,7 +16,7 @@
 
 ```
 D:\个人工作台搭建\
-├── 个人工作台.html      # 主应用（~2962行）
+├── 个人工作台.html      # 主应用（~3018行）
 ├── index.html           # 部署入口（必须与主文件保持同步！）
 ├── manifest.json        # PWA 清单
 ├── sw.js                # Service Worker
@@ -97,11 +97,19 @@ setState(Object.assign({}, state, { key: val }));  // 推荐
 - Session 自动恢复：挂载时 getSession() + onAuthStateChange 监听
 
 ### 同步机制
-- **自动同步**：数据变化 1500ms 防抖 upsert（依赖 cloudReady state 触发）
-- **手动同步**：侧边栏底部「↻ 同步」按钮（handleForceSync），立即上传本地数据到云端
+- **自动同步（推送）**：数据变化 1500ms 防抖 upsert（依赖 cloudReady state 触发）
+- **手动推送**：侧边栏底部「↻ 同步」按钮（handleForceSync），立即上传本地数据到云端
+- **手动拉取**：侧边栏底部「↓ 拉取」按钮（pullFromCloud），立即从云端下载最新数据
+- **Realtime 自动拉取**：Supabase Realtime 订阅 workstation_data 表变更，另一台设备推送后自动触发 pullFromCloud
+- **窗口聚焦拉取**：window focus 事件自动触发 pullFromCloud，切换回工作台时获取最新数据
+- **拉取守卫**：`isLoadingFromCloud` ref 在拉取期间及之后 2s 内阻止自动推送，防止拉取的数据被回推覆盖
 - **首次登录**：loadFromCloud 使用 `.maybeSingle()` 查询；若无云端数据，自动 setTimeout(syncToCloud, 500) 推送本地数据
 - **cloudReady state**：loadFromCloud 完成后 setCloudReady(true)，加入 debounced sync 依赖数组确保登录后触发首次同步
 - **同步状态**：cloudSyncStatus (idle/syncing/synced/error)，侧边栏圆点+文字指示
+
+### Realtime 配置
+- Supabase Dashboard → Database → Publications → `supabase_realtime` → 添加 `workstation_data` 表
+- 未开启时 Realtime 订阅不生效，但窗口聚焦拉取和手动拉取仍可用
 
 ### 关键修复
 - `.maybeSingle()` 而非 `.single()`：新用户首次登录无数据时 `.single()` 会报错导致 `initialLoadDone` 永远不为 true
@@ -159,6 +167,8 @@ setState(Object.assign({}, state, { key: val }));  // 推荐
 7. **Supabase CDN 用 jsdelivr**：国内超时导致 _supabase 为 null，必须用 unpkg.com
 8. **Supabase .single() 查询**：新用户无数据时报错，必须用 .maybeSingle()
 9. **移动端删除按钮不可见**：group-hover 在触屏无效，需 CSS 媒体查询强制显示
+10. **Supabase Realtime 不生效**：需在 Dashboard → Publications → supabase_realtime 中添加 workstation_data 表（不是 Replication 页面）
+11. **跨设备数据不实时**：推送方向有 1500ms 防抖自动推送；拉取方向依赖 Realtime 订阅 + 窗口聚焦 + 手动拉取按钮
 
 ## 修改工作流
 
