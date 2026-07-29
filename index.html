@@ -485,6 +485,23 @@
         }
       };
 
+      const pullFromCloud = async () => {
+        if (!_supabase || !supaUser || !initialLoadDone.current || isLoadingFromCloud.current) return;
+        isLoadingFromCloud.current = true;
+        setCloudSyncStatus("syncing");
+        try {
+          var result = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", supaUser.id).maybeSingle();
+          if (result.data && result.data.data) {
+            applyCloudData(result.data.data);
+          }
+          setCloudSyncStatus("synced");
+          setTimeout(function() { setCloudSyncStatus("idle"); }, 2000);
+        } catch(e) {
+          setCloudSyncStatus("error");
+        }
+        setTimeout(function() { isLoadingFromCloud.current = false; }, 2000);
+      };
+
       // Check session on mount
       useEffect(() => {
         if (!_supabase) return;
@@ -513,6 +530,30 @@
         syncTimerRef.current = setTimeout(syncToCloud, 1500);
         return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
       }, [todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes,supaUser,cloudReady]);
+
+      // Supabase Realtime: auto-pull when another device updates cloud data
+      useEffect(() => {
+        if (!_supabase || !supaUser) return;
+        var channel = _supabase.channel("workstation-rt-" + supaUser.id)
+          .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "workstation_data",
+            filter: "user_id=eq." + supaUser.id
+          }, function() {
+            pullFromCloud();
+          })
+          .subscribe();
+        return function() { _supabase.removeChannel(channel); };
+      }, [supaUser]);
+
+      // Window focus: auto-pull when user switches back to this tab/window
+      useEffect(() => {
+        if (!_supabase || !supaUser) return;
+        var onFocus = function() { pullFromCloud(); };
+        window.addEventListener("focus", onFocus);
+        return function() { window.removeEventListener("focus", onFocus); };
+      }, [supaUser]);
 
       // ── Todo handlers ──
       const toggleTodo = (id) => setTodos(ts => ts.map(t => t.id===id ? {...t,done:!t.done} : t));
@@ -1127,6 +1168,10 @@
                           style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:cloudSyncStatus==="syncing"?"not-allowed":"pointer",padding:"2px 4px"}}>
                           {cloudSyncStatus==="syncing" ? "\u2b6f" : "\u21bb"}{"\u540c\u6b65"}
                         </button>
+                        <button onClick={pullFromCloud} disabled={cloudSyncStatus==="syncing"}
+                          style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:cloudSyncStatus==="syncing"?"not-allowed":"pointer",padding:"2px 4px"}}>
+                          {"\u2193"}{"\u62c9\u53d6"}
+                        </button>
                         <button onClick={handleSupaLogout} style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:"pointer"}}>{"\u767b\u51fa"}</button>
                       </div>
                     )}
@@ -1196,6 +1241,12 @@
                     onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
                     onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.4)"}>
                     {cloudSyncStatus==="syncing" ? "\u2b6f" : "\u21bb"}{"\u540c\u6b65"}
+                  </button>
+                  <button onClick={pullFromCloud} disabled={cloudSyncStatus==="syncing"}
+                    style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:cloudSyncStatus==="syncing"?"not-allowed":"pointer",padding:"2px 4px"}}
+                    onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
+                    onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.4)"}>
+                    {"\u2193"}{"\u62c9\u53d6"}
                   </button>
                   <button onClick={handleSupaLogout} style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}}
                     onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
