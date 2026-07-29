@@ -104,6 +104,8 @@
       .mobile-header { display: flex !important; }
       .mobile-main { padding: 56px 1rem 1rem 1rem !important; }
       .mobile-bottom-nav { display: flex !important; }
+      .group .opacity-0,
+      .group .group-hover\:opacity-100 { opacity: 0.6 !important; }
     }
     @media (min-width: 769px) {
       .mobile-header { display: none !important; }
@@ -1301,7 +1303,7 @@
                                   <input value={editTodoText} onChange={e=>setEditTodoText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEditTodo();if(e.key==="Escape")setEditTodoId(null);}}
                                     className="flex-1 px-3 py-2 rounded-lg border border-indigo-200 text-sm bg-white" autoFocus/>
                                 </div>
-                                <div className="flex gap-2 items-center">
+                                <div className="flex gap-2 items-center flex-wrap">
                                   <input type="date" value={editTodoDate} onChange={e=>setEditTodoDate(e.target.value)}
                                     className="px-2 py-1.5 rounded-lg border border-indigo-200 text-xs bg-white"/>
                                   <select value={editTodoPri} onChange={e=>setEditTodoPri(e.target.value)}
@@ -1348,27 +1350,29 @@
                         </div>
                         {/* Add todo form */}
                         <div className="px-5 py-4 bg-gray-50 border-t border-gray-100">
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <input value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTodo()}
                               placeholder="添加新待办..."
                               className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
-                            <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}
-                              className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
-                            <select value={newPri} onChange={e=>setNewPri(e.target.value)}
-                              className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white">
-                              <option value="normal">普通</option>
-                              <option value="medium">一般</option>
-                              <option value="high">紧急</option>
-                            </select>
-                            <input list="tag-suggestions" value={newTag} onChange={e=>setNewTag(e.target.value)}
-                              placeholder="标签" className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"5.5rem"}}/>
-                            <datalist id="tag-suggestions">
-                              {allTags.map(t => <option key={t} value={t}/>)}
-                            </datalist>
-                            <button onClick={addTodo}
-                              className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
-                              <Icon name="plus" size={14}/> 添加
-                            </button>
+                            <div className="flex gap-2">
+                              <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}
+                                className="flex-1 sm:flex-none px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                              <select value={newPri} onChange={e=>setNewPri(e.target.value)}
+                                className="flex-1 sm:flex-none px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white">
+                                <option value="normal">普通</option>
+                                <option value="medium">一般</option>
+                                <option value="high">紧急</option>
+                              </select>
+                              <input list="tag-suggestions" value={newTag} onChange={e=>setNewTag(e.target.value)}
+                                placeholder="标签" className="flex-1 sm:flex-none px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{minWidth:"4.5rem"}}/>
+                              <datalist id="tag-suggestions">
+                                {allTags.map(t => <option key={t} value={t}/>)}
+                              </datalist>
+                              <button onClick={addTodo}
+                                className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                                <Icon name="plus" size={14}/> 添加
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1461,22 +1465,24 @@
                               ))}
                             </div>
                             <div className="px-5 py-4 bg-gray-50 border-t border-gray-100">
-                              <div className="flex gap-2">
+                              <div className="flex flex-col sm:flex-row gap-2">
                                 <input value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTodo()}
                                   placeholder={"添加待办到 " + selectedDate + " ..."}
                                   className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
-                                <select value={newPri} onChange={e=>setNewPri(e.target.value)}
-                                  className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white">
-                                  <option value="normal">普通</option>
-                                  <option value="medium">一般</option>
-                                  <option value="high">紧急</option>
-                                </select>
-                                <input list="tag-suggestions" value={newTag} onChange={e=>setNewTag(e.target.value)}
-                                  placeholder="标签" className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"5.5rem"}}/>
-                                <button onClick={addTodo}
-                                  className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
-                                  <Icon name="plus" size={14}/> 添加
-                                </button>
+                                <div className="flex gap-2">
+                                  <select value={newPri} onChange={e=>setNewPri(e.target.value)}
+                                    className="flex-1 sm:flex-none px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white">
+                                    <option value="normal">普通</option>
+                                    <option value="medium">一般</option>
+                                    <option value="high">紧急</option>
+                                  </select>
+                                  <input list="tag-suggestions" value={newTag} onChange={e=>setNewTag(e.target.value)}
+                                    placeholder="标签" className="flex-1 sm:flex-none px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{minWidth:"4.5rem"}}/>
+                                  <button onClick={addTodo}
+                                    className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                                    <Icon name="plus" size={14}/> 添加
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1892,7 +1898,7 @@
                       {allTags.length === 0 && <span className="text-xs text-gray-400 py-1">暂无标签数据，请先给待办打标签</span>}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="text-xs text-gray-400 mb-1 block">日期</label>
                       <input type="date" value={dd.date} onChange={e=>setDd(d=>({...d,date:e.target.value}))}
@@ -2055,7 +2061,7 @@
                     <input value={wd.project} onChange={e=>setWd(d=>({...d,project:e.target.value}))}
                       placeholder="例：交建HR项目" className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{background:"#FFFDF7",borderColor:"#D4B896",color:"#5D4037"}}/>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="text-xs mb-1 block" style={{color:"#8B7355"}}>本周完成（每行一条）</label>
                       <textarea value={wd.completed} onChange={e=>setWd(d=>({...d,completed:e.target.value}))}
@@ -2181,24 +2187,24 @@
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-2 mb-3">
+                  <div className="flex flex-col sm:flex-row gap-2 mb-3">
                     <input value={newExType} onChange={e=>setNewExType(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustomExType()}
                       placeholder={"\u81ea\u5b9a\u4e49\u8fd0\u52a8\u7c7b\u578b"}
-                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white flex-1 max-w-xs"/>
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white flex-1"/>
                     <button onClick={addCustomExType}
-                      className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors flex items-center gap-1 flex-shrink-0">
+                      className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors flex items-center justify-center gap-1 flex-shrink-0">
                       <Icon name="plus" size={14}/>{"\u6dfb\u52a0\u7c7b\u578b"}
                     </button>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input type="date" value={exDate} onChange={e=>setExDate(e.target.value)}
-                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"9rem"}}/>
+                      className="w-full sm:w-auto px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
                     <input type="number" value={exDuration} onChange={e=>setExDuration(e.target.value)}
-                      placeholder={"\u65f6\u957f(\u5206\u949f)"} className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"7rem"}}/>
+                      placeholder={"\u65f6\u957f(\u5206\u949f)"} className="w-full sm:w-auto px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
                     <input value={exNote} onChange={e=>setExNote(e.target.value)}
                       placeholder={"\u5907\u6ce8(\u53ef\u9009)"} className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
                     <button onClick={addExercise}
-                      className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                      className="w-full sm:w-auto px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-colors flex items-center justify-center gap-1 flex-shrink-0">
                       <Icon name="plus" size={14}/>{"\u6dfb\u52a0"}
                     </button>
                   </div>
@@ -2309,7 +2315,7 @@
                 {moodView === "today" && (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                     <h4 className="font-semibold text-gray-700 text-sm mb-4">{"\u4eca\u65e5\u5fc3\u60c5\u5982\u4f55\uff1f"}</h4>
-                    <div className="flex justify-center gap-4 mb-6">
+                    <div className="flex justify-center gap-2 sm:gap-4 mb-6 flex-wrap">
                       {MOOD_OPTIONS.map(m => (
                         <button key={m.emoji} onClick={()=>setCurMood(m.emoji)}
                           className={"flex flex-col items-center gap-1 p-3 rounded-xl transition-all " + (curMood===m.emoji?"bg-indigo-50 border-2 border-indigo-300 scale-110":"border-2 border-transparent hover:bg-gray-50")}
@@ -2537,15 +2543,15 @@
                       </button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input type="date" value={finDate} onChange={e=>setFinDate(e.target.value)}
-                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"9rem"}}/>
+                      className="w-full sm:w-auto px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
                     <input type="number" value={finAmount} onChange={e=>setFinAmount(e.target.value)}
-                      placeholder={"\u91d1\u989d"} className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"6rem"}}/>
+                      placeholder={"\u91d1\u989d"} className="w-full sm:w-auto px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
                     <input value={finNote} onChange={e=>setFinNote(e.target.value)}
                       placeholder={"\u5907\u6ce8(\u53ef\u9009)"} className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
                     <button onClick={addFinance}
-                      className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                      className="w-full sm:w-auto px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center justify-center gap-1 flex-shrink-0">
                       <Icon name="plus" size={14}/>{"\u6dfb\u52a0"}
                     </button>
                   </div>
@@ -2646,7 +2652,7 @@
                   const maxMonth = monthTotals.length > 0 ? Math.max(...monthTotals) : 1;
                   return (
                     <div className="space-y-4 mt-6">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                           <h4 className="font-semibold text-gray-700 text-sm mb-4 flex items-center gap-2">
                             <Icon name="chartBar" size={14} className="text-red-400"/>{"\u672c\u6708\u652f\u51fa\u5206\u5e03"}

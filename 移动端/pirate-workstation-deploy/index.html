@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="工作台">
+  <meta name="theme-color" content="#1B2838">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%231a1f36'/><text x='90' y='125' text-anchor='middle' font-size='100' fill='white' font-family='Arial' font-weight='bold'>W</text></svg>">
+  <title>海贼工作台</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', '"Microsoft YaHei"', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body, #root { height: 100%; margin: 0; padding: 0; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    * { box-sizing: border-box; }
+    textarea:focus, input:focus, select:focus { outline: none; border-color: #818cf8 !important; }
+    /* One Piece Theme */
+    :root {
+      --op-deep-blue: #1B2838;
+      --op-pirate-red: #C0392B;
+      --op-cream: #FDF5E6;
+      --op-gold: #F4D03F;
+      --op-border: #2C3E50;
+    }
+    body {
+      background: var(--op-cream);
+      background-image: radial-gradient(circle, rgba(27,40,56,0.04) 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+    .op-card {
+      border: 3px solid var(--op-border);
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 4px 4px 0 rgba(44,62,80,0.15);
+    }
+    .op-header {
+      background: linear-gradient(135deg, #1B2838 0%, #2C3E50 50%, #1B2838 100%);
+    }
+    .op-group-title {
+      color: var(--op-deep-blue);
+      font-weight: 800;
+      font-size: 1.1rem;
+      border-left: 4px solid var(--op-pirate-red);
+      padding-left: 12px;
+    }
+    .op-btn-primary {
+      background: var(--op-pirate-red);
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .op-btn-primary:hover {
+      background: #A93226;
+    }
+    .op-nautical {
+      background: #FAF0DC;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(139,119,101,0.15) 28px),
+        repeating-linear-gradient(90deg, transparent, transparent 100%, rgba(139,119,101,0.05) 100%);
+      border: 3px solid #8B7355;
+      border-radius: 8px;
+      position: relative;
+    }
+    .op-nautical::before {
+      display: none;
+    }
+    .op-nautical-title {
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #5D4037;
+      font-weight: 700;
+    }
+    /* Sidebar scrollbar */
+    aside::-webkit-scrollbar { width: 4px; }
+    aside::-webkit-scrollbar-track { background: transparent; }
+    aside::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+    aside::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+    /* Nautical input focus */
+    .op-nautical input:focus, .op-nautical textarea:focus, .op-nautical select:focus {
+      outline: none;
+      border-color: #8B7355 !important;
+      box-shadow: 0 0 0 2px rgba(139,115,85,0.15);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    /* ═══════════════════ SVG Icon Component ═══════════════════ */
+    const ICONS = {
+      calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+      list: 'M4 6h16M4 12h16M4 18h16',
+      checkSquare: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      fileText: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+      chevronLeft: 'M15 19l-7-7 7-7',
+      chevronRight: 'M9 5l7 7-7 7',
+      plus: 'M12 4v16m8-8H4',
+      trash: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+      save: 'M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4',
+      download: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
+      upload: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
+      check: 'M5 13l4 4L19 7',
+      alertCircle: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+      book: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+      chartBar: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+      activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+      smile: 'M14 9V5a3 3 0 00-6 0v4M5 11h14l-1.5 9.5a2 2 0 01-2 1.5H8.5a2 2 0 01-2-1.5L5 11z',
+      coffee: 'M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3',
+      dollar: 'M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6',
+      edit: 'M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z',
+    };
+    const Icon = ({ name, size = 24, className = "" }) => {
+      const d = ICONS[name];
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className={className}>
+          <path d={d}/>
+        </svg>
+      );
+    };
+
+    /* ═══════════════════ CrewBadge Component ═══════════════════ */
+    const CREW_COLORS = {
+      luffy: {bg:"#E74C3C",border:"#C0392B",char:"\u8def"},
+      zoro: {bg:"#27AE60",border:"#1E8449",char:"\u7d22"},
+      chopper: {bg:"#E8A87C",border:"#D4956B",char:"\u4e54"},
+      robin: {bg:"#8E44AD",border:"#7D3C98",char:"\u7f57"},
+      nami: {bg:"#F39C12",border:"#D68910",char:"\u5a1c"},
+      sanji: {bg:"#F1C40F",border:"#D4AC0D",char:"\u5c71"},
+      brook: {bg:"#5D6D7E",border:"#4A5A6A",char:"\u5e03"},
+      usopp: {bg:"#D4A053",border:"#B8862D",char:"\u4e4c"},
+      ace: {bg:"#E74C3C",border:"#A93226",char:"\u827e"},
+      law: {bg:"#1ABC9C",border:"#16A085",char:"\u7f57"},
+    };
+    const CrewBadge = ({name, size=32}) => {
+      const c = CREW_COLORS[name];
+      if (!c) return null;
+      return (
+        <img src={"./avatars/"+name+".png"} alt={c.char}
+          style={{width:size,height:size,borderRadius:"50%",border:"2px solid "+c.border,flexShrink:0,objectFit:"cover",boxShadow:"0 2px 4px rgba(0,0,0,0.2)"}}
+          onError={function(e){e.target.style.display="none";}}
+        />
+      );
+    };
+
+    /* ═══════════════════ Utilities ═══════════════════ */
+    const todayStr = () => {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    };
+    const getISOWeek = (date) => {
+      const d = new Date(date); d.setHours(0,0,0,0);
+      d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+      const w1 = new Date(d.getFullYear(), 0, 4);
+      return d.getFullYear() + "-W" + String(1 + Math.round(((d - w1) / 86400000 - 3 + ((w1.getDay()+6)%7)) / 7)).padStart(2,"0");
+    };
+    const changeWeek = (ws, delta) => {
+      const [y, w] = ws.split("-W").map(Number);
+      const d = new Date(y, 0, 4);
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() + (day <= 4 ? -day+1 : 8-day) + (w - 1 + delta) * 7);
+      return getISOWeek(d);
+    };
+    const fmtWeek = (ws) => { const [y,w] = ws.split("-W"); return y + "年 第" + w + "周"; };
+    const CN_MONTHS = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+    const LS_KEY = "personal_workstation_v1";
+
+    const SAMPLE_HABITS = [
+      { id:"h1", name:"晨读30分钟", color:"#6366f1" },
+      { id:"h2", name:"运动锻炼", color:"#10b981" },
+      { id:"h3", name:"英语听力", color:"#f59e0b" },
+      { id:"h4", name:"专业技能学习", color:"#ef4444" },
+      { id:"h5", name:"冥想放松", color:"#8b5cf6" },
+      { id:"h6", name:"复盘总结", color:"#06b6d4" },
+    ];
+    const POMODORO_COLORS = ["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec4899","#84cc16"];
+
+    /* ═══════════════════ Sample Data ═══════════════════ */
+    const today = todayStr();
+    const curWeek = getISOWeek(new Date());
+
+    const SAMPLE_TODOS = [
+      { id:"t1", text:"提交交建HR项目阶段验收报告", date:today, done:false, priority:"high", tag:"交建HR项目" },
+      { id:"t2", text:"准备周会汇报材料", date:today, done:true, priority:"medium", tag:"内部管理" },
+      { id:"t3", text:"跟进s-HR系统接口联调进度", date:today, done:false, priority:"normal", tag:"交建HR项目" },
+    ];
+    const SAMPLE_DAILY = [
+      { id:"d1", date:today, project:"交建HR项目",
+        items:["完成组织模块接口文档评审，确认12个接口字段映射","与开发团队对齐同步监控方案，约定下周一联调"],
+        issues:"客户方项目经理本周请假，需求确认延后" },
+    ];
+    const SAMPLE_WEEKLY = [
+      { id:"w1", week:curWeek, project:"交建HR项目",
+        completed:["组织管理模块接口文档定稿（12个接口）","员工主数据同步方案通过技术评审","基础资料映射表维护功能上线测试环境"],
+        planned:["启动员工类接口联调","字典映射模块需求细化","同步监控面板UI开发"],
+        risks:"客户方项目经理下周继续请假，可能影响需求确认节奏" },
+    ];
+
+    /* ═══════════════════ Main App ═══════════════════ */
+    function App() {
+      const [page, setPage] = useState("dashboard");
+      const fileRef = useRef(null);
+
+      // ── Schedule state ──
+      const [todos, setTodos] = useState(SAMPLE_TODOS);
+      const [newTodo, setNewTodo] = useState("");
+      const [newDate, setNewDate] = useState(today);
+      const [newPri, setNewPri] = useState("normal");
+      const [newTag, setNewTag] = useState("");
+      const [checkins, setCheckins] = useState({});
+      const [calDate, setCalDate] = useState(new Date());
+      const [view, setView] = useState("list");
+      const [selectedDate, setSelectedDate] = useState(today);
+      const [editTodoId, setEditTodoId] = useState(null);
+      const [editTodoText, setEditTodoText] = useState("");
+      const [editTodoDate, setEditTodoDate] = useState(today);
+      const [editTodoPri, setEditTodoPri] = useState("normal");
+      const [editTodoTag, setEditTodoTag] = useState("");
+
+      // ── Daily state ──
+      const [dailys, setDailys] = useState(SAMPLE_DAILY);
+      const [dd, setDd] = useState({ date:today, project:"", items:"", issues:"" });
+
+      // ── Weekly state ──
+      const [weeklys, setWeeklys] = useState(SAMPLE_WEEKLY);
+      const [selWeek, setSelWeek] = useState(curWeek);
+      const [weekPickerDate, setWeekPickerDate] = useState("");
+      const [wd, setWd] = useState({ project:"", completed:"", planned:"", risks:"" });
+
+      // ── Habits & Pomodoro state ──
+      const [habits, setHabits] = useState(SAMPLE_HABITS);
+      const [habitCheckins, setHabitCheckins] = useState({});
+      const [newHabitName, setNewHabitName] = useState("");
+      const [habitView, setHabitView] = useState("today");
+      const habitCalDate = new Date();
+      const [habitCalMonth, setHabitCalMonth] = useState(habitCalDate.getMonth());
+      const [habitCalYear, setHabitCalYear] = useState(habitCalDate.getFullYear());
+      const [habitSelDate, setHabitSelDate] = useState(todayStr());
+      const [pomoTime, setPomoTime] = useState(25 * 60);
+      const [pomoRunning, setPomoRunning] = useState(false);
+      const [pomoMode, setPomoMode] = useState("work");
+      const [pomoHabitId, setPomoHabitId] = useState("");
+      const [pomoSessions, setPomoSessions] = useState([]);
+      const pomoIntervalRef = useRef(null);
+      const WORK_DURATION = 25 * 60;
+      const BREAK_DURATION = 5 * 60;
+      const [toast, setToast] = useState(null);
+      useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 2500); return () => clearTimeout(t); } }, [toast]);
+
+      // ── Exercise state ──
+      const [exercises, setExercises] = useState([]);
+      const [exType, setExType] = useState("\u8dd1\u6b65");
+      const [exDuration, setExDuration] = useState("");
+      const [exNote, setExNote] = useState("");
+      const [exDate, setExDate] = useState(today);
+      const [customExTypes, setCustomExTypes] = useState([]);
+      const [newExType, setNewExType] = useState("");
+      const [exFilterPeriod, setExFilterPeriod] = useState("week");
+
+      // ── Mood state ──
+      const [moods, setMoods] = useState([]);
+      const [moodView, setMoodView] = useState("today");
+      const [curMood, setCurMood] = useState("");
+      const [moodContent, setMoodContent] = useState("");
+      const MOOD_OPTIONS = [
+        {emoji:"\ud83d\ude0a", label:"\u5f00\u5fc3"},
+        {emoji:"\ud83d\ude0c", label:"\u5e73\u9759"},
+        {emoji:"\ud83d\ude10", label:"\u4e00\u822c"},
+        {emoji:"\ud83d\ude14", label:"\u4f4e\u843d"},
+        {emoji:"\ud83d\ude24", label:"\u70e6\u8e81"},
+        {emoji:"\ud83d\ude30", label:"\u7126\u8651"},
+      ];
+
+      // ── Meals state ──
+      const [meals, setMeals] = useState([]);
+      const [mealType, setMealType] = useState("lunch");
+      const [mealContent, setMealContent] = useState("");
+      const [mealView, setMealView] = useState("today");
+
+      // ── Finance state ──
+      const [finances, setFinances] = useState([]);
+      const [finType, setFinType] = useState("expense");
+      const [finAmount, setFinAmount] = useState("");
+      const [finCategory, setFinCategory] = useState("");
+      const [finNote, setFinNote] = useState("");
+      const [finDate, setFinDate] = useState(todayStr());
+      const [expenseCategories, setExpenseCategories] = useState(["\u9910\u996e","\u4ea4\u901a","\u8d2d\u7269","\u5a31\u4e50","\u5c45\u4f4f","\u533b\u7597","\u6559\u80b2","\u5176\u4ed6"]);
+      const [incomeCategories, setIncomeCategories] = useState(["\u5de5\u8d44","\u517c\u804c","\u7406\u8d22","\u7ea2\u5305","\u5176\u4ed6"]);
+      const [newCategory, setNewCategory] = useState("");
+
+      // ── Notes state ──
+      const [notes, setNotes] = useState([]);
+      const [noteType, setNoteType] = useState("reading");
+      const [noteTitle, setNoteTitle] = useState("");
+      const [noteBody, setNoteBody] = useState("");
+      const [editNoteId, setEditNoteId] = useState(null);
+      const [noteDate, setNoteDate] = useState(today);
+      const [noteFilterDate, setNoteFilterDate] = useState("");
+
+      // ── AI Chat state ──
+      const [aiOpen, setAiOpen] = useState(false);
+      const [aiInput, setAiInput] = useState("");
+      const [aiMessages, setAiMessages] = useState([{role:"ai", text:"\u4f60\u597d\uff01\u6211\u662f\u4f60\u7684AI\u52a9\u624b\uff0c\u53ef\u4ee5\u5e2e\u4f60\u5feb\u901f\u8bb0\u5f55\u3002\u8bd5\u8bd5\u8bf4\uff1a\u201c\u5348\u996d\u82b1\u4e8625\u201d\u3001\u201c\u8dd1\u6b6530\u5206\u949f\u201d\u3001\u201c\u6dfb\u52a0\u5f85\u529e\uff1a\u63d0\u4ea4\u5468\u62a5\u201d"}]);
+
+      // ── Persistence ──
+      useEffect(() => {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (raw) {
+            const d = JSON.parse(raw);
+            if (d.todos) setTodos(d.todos);
+            if (d.checkins) setCheckins(d.checkins);
+            if (d.dailys) setDailys(d.dailys);
+            if (d.weeklys) setWeeklys(d.weeklys);
+            if (d.habits) setHabits(d.habits);
+            if (d.habitCheckins) setHabitCheckins(d.habitCheckins);
+            if (d.pomoSessions) setPomoSessions(d.pomoSessions);
+            if (d.exercises) setExercises(d.exercises);
+            if (d.moods) setMoods(d.moods);
+            if (d.meals) setMeals(d.meals);
+            if (d.finances) setFinances(d.finances);
+            if (d.notes) setNotes(d.notes);
+            if (d.expenseCategories) setExpenseCategories(d.expenseCategories);
+            if (d.incomeCategories) setIncomeCategories(d.incomeCategories);
+            if (d.navOrder) {
+              var DEFAULT_CREW = {dashboard:"luffy",schedule:"law",habits:"zoro",exercise:"usopp",mood:"chopper",meals:"sanji",finance:"nami",notes:"robin",daily:"ace",weekly:"brook"};
+              setNavOrder(d.navOrder.map(function(item){return Object.assign({},item,{crew:DEFAULT_CREW[item.key]||item.crew});}));
+            }
+            if (d.customExTypes) setCustomExTypes(d.customExTypes);
+          }
+        } catch(e) {}
+      }, []);
+      useEffect(() => {
+        try { localStorage.setItem(LS_KEY, JSON.stringify({todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes})); } catch(e) {}
+      }, [todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes]);
+
+      // ── Todo handlers ──
+      const toggleTodo = (id) => setTodos(ts => ts.map(t => t.id===id ? {...t,done:!t.done} : t));
+      const removeTodo = (id) => setTodos(ts => ts.filter(t => t.id !== id));
+      const addTodo = () => {
+        if (!newTodo.trim()) return;
+        setTodos(ts => [...ts, {id:"t"+Date.now(), text:newTodo.trim(), date:newDate, done:false, priority:newPri, tag:newTag}]);
+        setNewTodo("");
+      };
+      const startEditTodo = (t) => { setEditTodoId(t.id); setEditTodoText(t.text); setEditTodoDate(t.date); setEditTodoPri(t.priority); setEditTodoTag(t.tag||""); };
+      const saveEditTodo = () => {
+        if (!editTodoText.trim()) return;
+        setTodos(ts => ts.map(t => t.id===editTodoId ? Object.assign({},t,{text:editTodoText.trim(),date:editTodoDate,priority:editTodoPri,tag:editTodoTag}) : t));
+        setEditTodoId(null);
+      };
+      const allTags = [...new Set(todos.map(t => t.tag).filter(Boolean))];
+      const todayTodos = todos.filter(t => t.date === today);
+      const doneC = todayTodos.filter(t => t.done).length;
+
+      // ── Checkin ──
+      const doCheckin = () => { const t = todayStr(); setCheckins(c => ({...c, [t]:!c[t]})); };
+
+      // ── Habit handlers ──
+      const addHabit = () => {
+        if (!newHabitName.trim()) return;
+        const color = POMODORO_COLORS[habits.length % POMODORO_COLORS.length];
+        setHabits(h => [...h, { id:"h"+Date.now(), name:newHabitName.trim(), color }]);
+        setNewHabitName("");
+      };
+      const removeHabit = (id) => {
+        setHabits(h => h.filter(x => x.id !== id));
+        setHabitCheckins(hc => {
+          const next = {};
+          Object.entries(hc).forEach(([date, arr]) => {
+            const filtered = arr.filter(x => x !== id);
+            if (filtered.length > 0) next[date] = filtered;
+          });
+          return next;
+        });
+      };
+      const toggleHabitToday = (hid) => {
+        const t = todayStr();
+        setHabitCheckins(hc => {
+          const cur = hc[t] || [];
+          return { ...hc, [t]: cur.includes(hid) ? cur.filter(x => x !== hid) : [...cur, hid] };
+        });
+      };
+      const toggleHabitDate = (hid, dateStr) => {
+        setHabitCheckins(hc => {
+          const cur = hc[dateStr] || [];
+          return Object.assign({}, hc, { [dateStr]: cur.includes(hid) ? cur.filter(x => x !== hid) : [...cur, hid] });
+        });
+      };
+      const todayHabitsDone = (habitCheckins[todayStr()] || []).filter(id => habits.some(h => h.id === id)).length;
+
+      // ── Pomodoro helpers ──
+      const getWeekDates = () => {
+        const d = new Date();
+        const day = d.getDay() || 7;
+        const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+        return Array.from({length:7}, (_,i) => {
+          const dd = new Date(mon); dd.setDate(mon.getDate()+i);
+          return dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0");
+        });
+      };
+      const weekDates = getWeekDates();
+      const habitWeeklyMins = (hid) => pomoSessions.filter(s => s.habitId === hid && weekDates.includes(s.date)).reduce((a,s) => a+s.duration, 0);
+      const totalWeekMins = pomoSessions.filter(s => weekDates.includes(s.date)).reduce((a,s) => a+s.duration, 0);
+      const todaySessions = pomoSessions.filter(s => s.date === todayStr());
+      const todayMins = todaySessions.reduce((a,s) => a+s.duration, 0);
+
+      // ── Pomodoro timer logic ──
+      const startPomo = () => { setPomoRunning(true); };
+      const pausePomo = () => { setPomoRunning(false); };
+      const resetPomo = () => { setPomoRunning(false); setPomoTime(WORK_DURATION); setPomoMode("work"); };
+      const skipPomo = () => {
+        setPomoRunning(false);
+        if (pomoMode === "work") {
+          setPomoMode("break"); setPomoTime(BREAK_DURATION);
+        } else {
+          setPomoMode("work"); setPomoTime(WORK_DURATION);
+        }
+      };
+      const finishPomo = () => {
+        if (pomoMode !== "work") { resetPomo(); return; }
+        if (!pomoHabitId) { setToast({type:"warn", text:"请先选择关联习惯再结束保存"}); return; }
+        const elapsed = Math.round((WORK_DURATION - pomoTime) / 60);
+        const hid = pomoHabitId;
+        const t = todayStr();
+        setPomoRunning(false);
+        if (elapsed >= 1) {
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});
+          setPomoSessions(ss => [...ss, { id:"p"+Date.now(), habitId:hid, duration:elapsed, date:t, time:timeStr }]);
+          const cur = habitCheckins[t] || [];
+          if (!cur.includes(hid)) {
+            setHabitCheckins(Object.assign({}, habitCheckins, { [t]: [...cur, hid] }));
+          }
+          const hab = habits.find(h => h.id === hid);
+          setToast({type:"ok", text:"已保存专注 " + elapsed + " 分钟，自动完成打卡「" + (hab ? hab.name : "") + "」"});
+        }
+        setPomoMode("work");
+        setPomoTime(WORK_DURATION);
+      };
+
+      useEffect(() => {
+        if (pomoRunning) {
+          pomoIntervalRef.current = setInterval(() => {
+            setPomoTime(prev => {
+              if (prev <= 1) {
+                clearInterval(pomoIntervalRef.current);
+                setPomoRunning(false);
+                if (pomoMode === "work") {
+                  setPomoSessions(ss => [...ss, { id:"p"+Date.now(), habitId:pomoHabitId, duration:WORK_DURATION/60, date:todayStr(), time:new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}) }]);
+                  // Auto-complete habit check-in
+                  if (pomoHabitId) {
+                    setHabitCheckins(hc => {
+                      const t = todayStr();
+                      const cur = hc[t] || [];
+                      if (cur.includes(pomoHabitId)) return hc;
+                      return { ...hc, [t]: [...cur, pomoHabitId] };
+                    });
+                  }
+                  setPomoMode("break");
+                  return BREAK_DURATION;
+                } else {
+                  setPomoMode("work");
+                  return WORK_DURATION;
+                }
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        } else {
+          clearInterval(pomoIntervalRef.current);
+        }
+        return () => clearInterval(pomoIntervalRef.current);
+      }, [pomoRunning, pomoMode, pomoHabitId]);
+
+      // ── Daily handlers ──
+      const saveDaily = () => {
+        if (!dd.project.trim() && !dd.items.trim()) return;
+        const eid = dd.id || "d" + Date.now();
+        setDailys(rs => {
+          const idx = rs.findIndex(r => r.id === eid);
+          const entry = {id:eid, date:dd.date, project:dd.project, items:dd.items.split("\n").filter(l=>l.trim()), issues:dd.issues};
+          if (idx >= 0) { const n = [...rs]; n[idx] = entry; return n; }
+          return [entry, ...rs];
+        });
+        setDd({date:today, project:"", items:"", issues:""});
+      };
+      const editDaily = (r) => setDd({id:r.id, date:r.date, project:r.project, items:r.items.join("\n"), issues:r.issues||""});
+      const removeDaily = (id) => setDailys(rs => rs.filter(r => r.id !== id));
+
+      // ── Weekly handlers ──
+      const saveWeekly = () => {
+        if (!wd.project.trim()) return;
+        const eid = wd.id || "w" + Date.now();
+        setWeeklys(rs => {
+          const idx = rs.findIndex(r => r.id === eid);
+          const entry = {id:eid, week:selWeek, project:wd.project,
+            completed:wd.completed.split("\n").filter(l=>l.trim()),
+            planned:wd.planned.split("\n").filter(l=>l.trim()), risks:wd.risks};
+          if (idx >= 0) { const n = [...rs]; n[idx] = entry; return n; }
+          return [entry, ...rs];
+        });
+        setWd({project:"", completed:"", planned:"", risks:""});
+      };
+      const editWeekly = (r) => setWd({id:r.id, project:r.project, completed:r.completed.join("\n"), planned:r.planned.join("\n"), risks:r.risks||""});
+      const removeWeekly = (id) => setWeeklys(rs => rs.filter(r => r.id !== id));
+
+      // ── Auto-generate handlers ──
+      const genDailyFromTodos = (filterTag) => {
+        const dateTodos = todos.filter(t => t.date === dd.date && t.done && (!filterTag || t.tag === filterTag));
+        if (dateTodos.length === 0) return;
+        const grouped = {};
+        dateTodos.forEach(t => {
+          const key = t.tag || "其他";
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(t.text);
+        });
+        const project = filterTag || Object.keys(grouped)[0] || "";
+        const items = dateTodos.map(t => (t.tag && t.tag !== project ? "[" + t.tag + "] " : "") + t.text);
+        setDd(d => ({...d, project, items: items.join("\n"), issues: ""}));
+      };
+
+      const genWeeklyFromDailys = () => {
+        const [y, w] = selWeek.split("-W").map(Number);
+        const jan4 = new Date(y, 0, 4);
+        const dayOfWeek = jan4.getDay() || 7;
+        const monday = new Date(jan4); monday.setDate(jan4.getDate() - dayOfWeek + 1 + (w - 1) * 7);
+        const weekDateSet = Array.from({length:7}, (_,i) => {
+          const d = new Date(monday); d.setDate(monday.getDate()+i);
+          return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+        });
+        const weekDailys = dailys.filter(r => weekDateSet.includes(r.date));
+        if (weekDailys.length === 0) return;
+        const grouped = {};
+        weekDailys.forEach(r => {
+          const proj = r.project || "其他";
+          if (!grouped[proj]) grouped[proj] = [];
+          r.items.forEach(item => { if (!grouped[proj].includes(item)) grouped[proj].push(item); });
+        });
+        const firstProj = Object.keys(grouped)[0];
+        setWd(d => ({...d, project: firstProj, completed: (grouped[firstProj] || []).join("\n"), planned:"", risks:""}));
+      };
+
+      // ── Exercise handlers ──
+      const EXERCISE_TYPES = ["\u8dd1\u6b65","\u6e38\u6cf3","\u9a91\u884c","\u529b\u91cf\u8bad\u7ec3","\u745c\u4f3d","\u6563\u6b65","\u8df3\u7ef3","\u5176\u4ed6"];
+      const allExTypes = [...EXERCISE_TYPES, ...customExTypes];
+      const addCustomExType = () => {
+        if (!newExType.trim() || allExTypes.includes(newExType.trim())) return;
+        setCustomExTypes(ts => [...ts, newExType.trim()]);
+        setExType(newExType.trim());
+        setNewExType("");
+      };
+      const addExercise = () => {
+        if (!exDuration || parseInt(exDuration) <= 0) return;
+        setExercises(ex => [...ex, {id:"ex"+Date.now(), date:exDate, type:exType, duration:parseInt(exDuration), note:exNote}]);
+        setExDuration(""); setExNote("");
+        setToast({type:"ok", text:"\u5df2\u8bb0\u5f55\u8fd0\u52a8: " + exType + " " + exDuration + "\u5206\u949f"});
+      };
+      const removeExercise = (id) => setExercises(ex => ex.filter(x => x.id !== id));
+      const todayExercises = exercises.filter(x => x.date === todayStr());
+      const weekExerciseMins = exercises.filter(x => weekDates.includes(x.date)).reduce((a,x) => a + x.duration, 0);
+      const getExFilterDates = () => {
+        const d = new Date(); d.setHours(0,0,0,0);
+        if(exFilterPeriod==="week") return weekDates;
+        if(exFilterPeriod==="month"){
+          const y=d.getFullYear(),m=d.getMonth(),days=new Date(y,m+1,0).getDate();
+          return Array.from({length:days},(_,i)=>y+"-"+String(m+1).padStart(2,"0")+"-"+String(i+1).padStart(2,"0"));
+        }
+        if(exFilterPeriod==="3month"){
+          const dates=[]; for(let i=89;i>=0;i--){const dd=new Date(d);dd.setDate(d.getDate()-i);dates.push(dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0"));} return dates;
+        }
+        return weekDates;
+      };
+      const exFilterDates = getExFilterDates();
+      const exFilteredExercises = exercises.filter(x => exFilterDates.includes(x.date));
+      const exFilteredMins = exFilteredExercises.reduce((a,x)=>a+x.duration,0);
+
+      // ── Mood handlers ──
+      const saveMood = () => {
+        if (!curMood) return;
+        const m = MOOD_OPTIONS.find(x => x.emoji === curMood);
+        setMoods(ms => [{date:todayStr(), mood:curMood, label:m?m.label:"", content:moodContent}, ...ms]);
+        setCurMood(""); setMoodContent("");
+        setToast({type:"ok", text:"\u5df2\u8bb0\u5f55\u4eca\u65e5\u5fc3\u60c5"});
+      };
+
+      // ── Meal handlers ──
+      const addMeal = () => {
+        if (!mealContent.trim()) return;
+        setMeals(ms => [...ms, {id:"ml"+Date.now(), date:todayStr(), meal:mealType, content:mealContent.trim()}]);
+        setMealContent("");
+      };
+      const removeMeal = (id) => setMeals(ms => ms.filter(x => x.id !== id));
+      const todayMeals = meals.filter(x => x.date === todayStr());
+
+      // ── Finance handlers ──
+      const addFinance = () => {
+        if (!finAmount || parseFloat(finAmount) <= 0) return;
+        const cat = finCategory || (finType === "expense" ? expenseCategories[0] : incomeCategories[0]);
+        setFinances(fs => [...fs, {id:"f"+Date.now(), date:finDate, type:finType, amount:parseFloat(finAmount), category:cat, note:finNote}]);
+        setFinAmount(""); setFinCategory(""); setFinNote(""); setFinDate(todayStr());
+        setToast({type:"ok", text:(finType==="expense"?"\u652f\u51fa":"\u6536\u5165") + " \u00a5" + finAmount + " \u5df2\u8bb0\u5f55"});
+      };
+      const removeFinance = (id) => setFinances(fs => fs.filter(x => x.id !== id));
+      const todayExpenses = finances.filter(x => x.date === todayStr() && x.type === "expense").reduce((a,x) => a + x.amount, 0);
+      const monthStart = today.slice(0,8) + "01";
+      const monthIncome = finances.filter(x => x.date >= monthStart && x.type === "income").reduce((a,x) => a + x.amount, 0);
+      const monthExpense = finances.filter(x => x.date >= monthStart && x.type === "expense").reduce((a,x) => a + x.amount, 0);
+      const monthBalance = monthIncome - monthExpense;
+      const addExpenseCategory = () => {
+        if (!newCategory.trim()) return;
+        setExpenseCategories(c => [...c, newCategory.trim()]);
+        setNewCategory("");
+      };
+      const addIncomeCategory = () => {
+        if (!newCategory.trim()) return;
+        setIncomeCategories(c => [...c, newCategory.trim()]);
+        setNewCategory("");
+      };
+
+      // ── Notes handlers ──
+      const saveNote = () => {
+        if (!noteTitle.trim()) return;
+        if (editNoteId) {
+          setNotes(ns => ns.map(n => n.id === editNoteId ? {...n, title:noteTitle.trim(), body:noteBody.trim(), type:noteType, date:noteDate} : n));
+          setEditNoteId(null);
+        } else {
+          setNotes(ns => [{id:"n"+Date.now(), type:noteType, title:noteTitle.trim(), body:noteBody.trim(), date:noteDate}, ...ns]);
+        }
+        setNoteTitle(""); setNoteBody(""); setNoteDate(today);
+      };
+      const editNote = (n) => { setEditNoteId(n.id); setNoteType(n.type); setNoteTitle(n.title); setNoteBody(n.body); setNoteDate(n.date||today); };
+      const removeNote = (id) => setNotes(ns => ns.filter(x => x.id !== id));
+      const filteredNotes = noteFilterDate ? notes.filter(n => n.date === noteFilterDate) : notes;
+
+      // ── AI Chat processor ──
+      const processAiInput = (text) => {
+        const t = text.trim();
+        const results = [];
+        const mealMap = {"\u65e9\u9910":"breakfast","\u65e9\u996d":"breakfast","\u5348\u9910":"lunch","\u5348\u996d":"lunch","\u665a\u9910":"dinner","\u665a\u996d":"dinner"};
+        let mealMatched = null;
+
+        // ── 1. 饮食检测（先于记账，因为饮食关键词可能同时含金额）──
+        let mm = t.match(/(\u65e9\u9910|\u65e9\u996d|\u5348\u9910|\u5348\u996d|\u665a\u9910|\u665a\u996d)[\u5403\u4e86\u6709\uff0c,]?\s*(.+?)(?:[\uff0c,]\s*(?:\u82b1\u4e86|花费)\s*\d+\.?\d*.*)?$/);
+        if (!mm) mm = t.match(/(\u65e9\u9910|\u65e9\u996d|\u5348\u9910|\u5348\u996d|\u665a\u9910|\u665a\u996d)\s+(.+?)(?:[\uff0c,]\s*(?:\u82b1\u4e86|花费)\s*\d+\.?\d*.*)?$/);
+        if (mm) {
+          const mt = mealMap[mm[1]] || "lunch";
+          const content = mm[2].replace(/[\uff0c,]\s*(\u82b1\u4e86|花费)\s*\d+\.?\d*.*/,"").trim();
+          if (content) {
+            setMeals(ms => [...ms, {id:"ml"+Date.now(), date:todayStr(), meal:mt, content:content}]);
+            mealMatched = mm[1];
+            results.push("\ud83c\udf7d\ufe0f \u5df2\u8bb0\u5f55" + mm[1] + ": " + content);
+          }
+        }
+
+        // ── 2. 记账（支出）──
+        let m = t.match(/(?:\u82b1\u4e86|花费|花了)\s*(\d+\.?\d*)/);
+        if (!m) m = t.match(/(.{1,8}?)[\uff0c,]\s*\u82b1\u4e86?\s*(\d+\.?\d*)/);
+        if (!m && !mealMatched) m = t.match(/(.{1,6}?)\u82b1\u4e86?(\d+\.?\d*)/);
+        if (m) {
+          const amt = parseFloat(m[2] || m[1]);
+          const ctx = m[1] || t;
+          let cat = "\u5176\u4ed6";
+          if (/\u5403|\u996d|\u9910|\u5348|\u65e9|\u665a|\u5916\u5356|\u5496\u5561|\u5976\u8336|\u9762|\u7c89|\u70eb|\u997c|\u6c34\u679c|\u96f6\u98df/.test(ctx) || mealMatched) cat = "\u9910\u996e";
+          else if (/\u8f66|\u6253\u8f66|\u516c\u4ea4|\u5730\u94c1|\u6cb9|\u52a0\u6cb9|\u6ef4\u6ef4/.test(ctx)) cat = "\u4ea4\u901a";
+          else if (/\u4e70|\u8d2d|\u8863|\u978b|\u5316\u5986/.test(ctx)) cat = "\u8d2d\u7269";
+          else if (/\u7535\u5f71|\u6e38\u620f|\u73a9|KTV|\u5531/.test(ctx)) cat = "\u5a31\u4e50";
+          else if (/\u623f\u79df|\u6c34\u7535|\u7f51\u8d39|\u7269\u4e1a/.test(ctx)) cat = "\u5c45\u4f4f";
+          else if (/\u836f|\u533b|\u770b\u75c5/.test(ctx)) cat = "\u533b\u7597";
+          else if (/\u4e66|\u8bfe|\u57f9\u8bad|\u5b66/.test(ctx)) cat = "\u6559\u80b2";
+          if (amt > 0) {
+            setFinances(fs => [...fs, {id:"f"+Date.now(), date:todayStr(), type:"expense", amount:amt, category:cat, note:ctx.trim().slice(0,20)}]);
+            results.push("\ud83d\udcb0 \u5df2\u8bb0\u5f55\u652f\u51fa: \u00a5" + amt + " (\u5206\u7c7b: " + cat + ")");
+          }
+        }
+
+        // ── 3. 记账（收入）──
+        m = t.match(/(\u5de5\u8d44|\u517c\u804c|\u7406\u8d22|\u7ea2\u5305|\u5956\u91d1|\u6536\u5165).*?(\d+\.?\d*)/);
+        if (!m) m = t.match(/(\d+\.?\d*).*?(\u5230\u8d26|\u8d5a|\u6536\u5165)/);
+        if (m) {
+          const amt = parseFloat(m[2] || m[1]);
+          let cat = "\u5176\u4ed6";
+          if (/\u5de5\u8d44|\u85aa/.test(t)) cat = "\u5de5\u8d44";
+          else if (/\u517c\u804c/.test(t)) cat = "\u517c\u804c";
+          else if (/\u7406\u8d22|\u5229\u606f/.test(t)) cat = "\u7406\u8d22";
+          else if (/\u7ea2\u5305/.test(t)) cat = "\u7ea2\u5305";
+          if (amt > 0) {
+            setFinances(fs => [...fs, {id:"f"+Date.now(), date:todayStr(), type:"income", amount:amt, category:cat, note:t.slice(0,20)}]);
+            results.push("\ud83d\udcb5 \u5df2\u8bb0\u5f55\u6536\u5165: \u00a5" + amt + " (\u5206\u7c7b: " + cat + ")");
+          }
+        }
+
+        // ── 4. 运动 ──
+        m = t.match(/(\u8dd1\u6b65|\u6e38\u6cf3|\u9a91\u884c|\u529b\u91cf|\u745c\u4f3d|\u6563\u6b65|\u8df3\u7ef3|\u8fd0\u52a8)(\d+)\s*(\u5206\u949f|\u5c0f\u65f6)?/);
+        if (m) {
+          let dur = parseInt(m[2]);
+          if (m[3] === "\u5c0f\u65f6") dur *= 60;
+          setExercises(ex => [...ex, {id:"ex"+Date.now(), date:todayStr(), type:m[1], duration:dur, note:""}]);
+          results.push("\ud83c\udfc3 \u5df2\u8bb0\u5f55\u8fd0\u52a8: " + m[1] + " " + dur + "\u5206\u949f");
+        }
+
+        // ── 5. 待办 ──
+        m = t.match(/\u6dfb\u52a0\u5f85\u529e[\uff1a:]\s*(.+)/);
+        if (m) {
+          setTodos(ts => [...ts, {id:"t"+Date.now(), text:m[1].trim(), date:todayStr(), done:false, priority:"normal", tag:""}]);
+          results.push("\u2705 \u5df2\u6dfb\u52a0\u5f85\u529e: " + m[1].trim());
+        }
+
+        // ── 6. 心情 ──
+        m = t.match(/\u5fc3\u60c5.*?(\u5f00\u5fc3|\u5e73\u9759|\u4e00\u822c|\u4f4e\u843d|\u70e6\u8e81|\u7126\u8651)/);
+        if (!m) m = t.match(/\u4eca\u5929.*?(\u5f00\u5fc3|\u5e73\u9759|\u4e00\u822c|\u4f4e\u843d|\u70e6\u8e81|\u7126\u8651)/);
+        if (m) {
+          const moodMap = {"\u5f00\u5fc3":"\ud83d\ude0a","\u5e73\u9759":"\ud83d\ude0c","\u4e00\u822c":"\ud83d\ude10","\u4f4e\u843d":"\ud83d\ude14","\u70e6\u8e81":"\ud83d\ude24","\u7126\u8651":"\ud83d\ude30"};
+          const emoji = moodMap[m[1]] || "";
+          setMoods(ms => [{date:todayStr(), mood:emoji, label:m[1], content:""}, ...ms]);
+          results.push("\u2728 \u5df2\u8bb0\u5f55\u5fc3\u60c5: " + emoji + " " + m[1]);
+        }
+
+        // ── 7. 打卡 ──
+        m = t.match(/\u6253\u5361[\uff1a:]\s*(.+)/);
+        if (m) {
+          const name = m[1].trim();
+          const hab = habits.find(h => h.name === name);
+          if (hab) {
+            const t2 = todayStr();
+            const cur = habitCheckins[t2] || [];
+            if (!cur.includes(hab.id)) {
+              setHabitCheckins(Object.assign({}, habitCheckins, {[t2]: [...cur, hab.id]}));
+            }
+            results.push("\u2705 \u5df2\u5b8c\u6210\u6253\u5361: " + name);
+          } else {
+            results.push("\u26a0\ufe0f \u672a\u627e\u5230\u4e60\u60ef\u300c" + name + "\u300d\uff0c\u8bf7\u5148\u5728\u4e60\u60ef\u6253\u5361\u9875\u9762\u6dfb\u52a0");
+          }
+        }
+
+        // ── 8. 笔记 ──
+        m = t.match(/(\u8bb0\u4f4f|\u7b14\u8bb0|\u7075\u611f|\u8bb0\u5f55)[\uff1a:]\s*(.+)/);
+        if (m && results.length === 0) {
+          const title = m[2].trim().slice(0, 20);
+          setNotes(ns => [{id:"n"+Date.now(), type:"idea", title:title, body:m[2].trim(), date:todayStr()}, ...ns]);
+          results.push("\ud83d\udcdd \u5df2\u4fdd\u5b58\u7075\u611f\u7b14\u8bb0: " + title);
+        }
+
+        if (results.length > 0) return results.join("\n");
+        return "\u2753 \u62b1\u6b49\uff0c\u6211\u6ca1\u7406\u89e3\u3002\u4f60\u53ef\u4ee5\u8bd5\u8bd5\uff1a\n\u00b7 \u201c\u5348\u996d\u5403\u4e86\u725b\u8089\u9762\uff0c\u82b1\u4e8625\u201d \u2192 \u996e\u98df+\u8bb0\u8d26\n\u00b7 \u201c\u65e9\u9910\u5496\u5561\uff0c\u82b1\u4e869.9\u201d \u2192 \u996e\u98df+\u8bb0\u8d26\n\u00b7 \u201c\u8dd1\u6b6530\u5206\u949f\u201d \u2192 \u8fd0\u52a8\n\u00b7 \u201c\u6dfb\u52a0\u5f85\u529e\uff1aXX\u201d \u2192 \u5f85\u529e\n\u00b7 \u201c\u5fc3\u60c5\u5f00\u5fc3\u201d \u2192 \u5fc3\u60c5\n\u00b7 \u201c\u6253\u5361\uff1aXX\u201d \u2192 \u6253\u5361\n\u00b7 \u201c\u8bb0\u4f4f\uff1aXX\u201d \u2192 \u7b14\u8bb0";
+      };
+      const sendAiMessage = () => {
+        if (!aiInput.trim()) return;
+        const userMsg = aiInput.trim();
+        const reply = processAiInput(userMsg);
+        setAiMessages(ms => [...ms, {role:"user", text:userMsg}, {role:"ai", text:reply}]);
+        setAiInput("");
+      };
+
+      // ── Export / Import ──
+      const exportData = () => {
+        const blob = new Blob([JSON.stringify({todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes}, null, 2)], {type:"application/json"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "\u5de5\u4f5c\u53f0\u5907\u4efd_" + todayStr() + ".json";
+        a.click();
+      };
+      const importData = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const d = JSON.parse(ev.target.result);
+            if (d.todos) setTodos(d.todos);
+            if (d.checkins) setCheckins(d.checkins);
+            if (d.dailys) setDailys(d.dailys);
+            if (d.weeklys) setWeeklys(d.weeklys);
+            if (d.habits) setHabits(d.habits);
+            if (d.habitCheckins) setHabitCheckins(d.habitCheckins);
+            if (d.pomoSessions) setPomoSessions(d.pomoSessions);
+            if (d.exercises) setExercises(d.exercises);
+            if (d.moods) setMoods(d.moods);
+            if (d.meals) setMeals(d.meals);
+            if (d.finances) setFinances(d.finances);
+            if (d.notes) setNotes(d.notes);
+            if (d.expenseCategories) setExpenseCategories(d.expenseCategories);
+            if (d.incomeCategories) setIncomeCategories(d.incomeCategories);
+            if (d.navOrder) {
+              var DEFAULT_CREW2 = {dashboard:"luffy",schedule:"law",habits:"zoro",exercise:"usopp",mood:"chopper",meals:"sanji",finance:"nami",notes:"robin",daily:"ace",weekly:"brook"};
+              setNavOrder(d.navOrder.map(function(item){return Object.assign({},item,{crew:DEFAULT_CREW2[item.key]||item.crew});}));
+            }
+            if (d.customExTypes) setCustomExTypes(d.customExTypes);
+          } catch(_) { alert("\u6587\u4ef6\u683c\u5f0f\u9519\u8bef\uff0c\u8bf7\u9009\u62e9JSON\u5907\u4efd\u6587\u4ef6"); }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      };
+
+      // ── Calendar computed ──
+      const yr = calDate.getFullYear(), mo = calDate.getMonth();
+      const firstDow = new Date(yr, mo, 1).getDay();
+      const dim = new Date(yr, mo+1, 0).getDate();
+      const prevDim = new Date(yr, mo, 0).getDate();
+      const calDays = [];
+      for (let i = firstDow-1; i >= 0; i--) calDays.push({d:prevDim-i, cur:false});
+      for (let i = 1; i <= dim; i++) calDays.push({d:i, cur:true, date:yr+"-"+String(mo+1).padStart(2,"0")+"-"+String(i).padStart(2,"0")});
+      const rem = (7 - calDays.length % 7) % 7;
+      for (let i = 1; i <= rem; i++) calDays.push({d:i, cur:false});
+
+      const weekReps = weeklys.filter(r => r.week === selWeek);
+
+      /* ═══════════════════ RENDER ═══════════════════ */
+
+      const todayMoodEntry = moods.filter(x => x.date === todayStr())[0];
+      const greeting = (() => { const h = new Date().getHours(); return h < 6 ? "\u51cc\u6668\u597d" : h < 9 ? "\u65e9\u4e0a\u597d" : h < 12 ? "\u4e0a\u5348\u597d" : h < 14 ? "\u4e2d\u5348\u597d" : h < 18 ? "\u4e0b\u5348\u597d" : "\u665a\u4e0a\u597d"; })();
+      const dateLabel = (() => { const d = new Date(); return (d.getMonth()+1) + "\u6708" + d.getDate() + "\u65e5 " + ["\u5468\u65e5","\u5468\u4e00","\u5468\u4e8c","\u5468\u4e09","\u5468\u56db","\u5468\u4e94","\u5468\u516d"][d.getDay()]; })();
+
+      const [navOrder, setNavOrder] = useState([
+        {key:"dashboard", icon:"chartBar", label:"\u5de5\u4f5c\u53f0\u6982\u89c8", crew:"luffy"},
+        {key:"schedule", icon:"calendar", label:"\u65e5\u7a0b\u7ba1\u7406", crew:"law"},
+        {key:"habits", icon:"checkSquare", label:"\u4e60\u60ef\u6253\u5361", crew:"zoro"},
+        {key:"exercise", icon:"activity", label:"\u8fd0\u52a8\u8bb0\u5f55", crew:"usopp"},
+        {key:"mood", icon:"smile", label:"\u5fc3\u60c5\u65e5\u8bb0", crew:"chopper"},
+        {key:"meals", icon:"coffee", label:"\u996e\u98df\u8bb0\u5f55", crew:"sanji"},
+        {key:"finance", icon:"dollar", label:"\u8bb0\u8d26", crew:"nami"},
+        {key:"notes", icon:"edit", label:"\u8bfb\u4e66\u7b14\u8bb0", crew:"robin"},
+        {key:"daily", icon:"fileText", label:"\u5de5\u4f5c\u65e5\u62a5", crew:"ace"},
+        {key:"weekly", icon:"book", label:"\u822a\u6d77\u5468\u62a5", crew:"brook"},
+      ]);
+      const [dragItemKey, setDragItemKey] = useState(null);
+      const [dragOverKey, setDragOverKey] = useState(null);
+      const handleDragStart = (key) => setDragItemKey(key);
+      const handleDragOver = (e, key) => { e.preventDefault(); setDragOverKey(key); };
+      const handleDrop = (targetKey) => {
+        if (!dragItemKey || dragItemKey === targetKey) { setDragItemKey(null); setDragOverKey(null); return; }
+        setNavOrder(prev => {
+          const arr = [...prev];
+          const fromIdx = arr.findIndex(n => n.key === dragItemKey);
+          const toIdx = arr.findIndex(n => n.key === targetKey);
+          const [moved] = arr.splice(fromIdx, 1);
+          arr.splice(toIdx, 0, moved);
+          return arr;
+        });
+        setDragItemKey(null);
+        setDragOverKey(null);
+      };
+      const handleDragEnd = () => { setDragItemKey(null); setDragOverKey(null); };
+
+      return (
+        <div className="h-screen flex" style={{background:"var(--op-cream)"}}>
+          {/* Toast */}
+          {toast && (
+            <div className="fixed top-6 left-1/2 z-50" style={{transform:"translateX(-50%)"}}>
+              <div className={"px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-bounce " +
+                (toast.type === "ok" ? "bg-emerald-500 text-white" : "bg-amber-500 text-white")}>
+                <Icon name={toast.type === "ok" ? "checkSquare" : "alertCircle"} size={16}/>
+                {toast.text}
+              </div>
+            </div>
+          )}
+
+          {/* ═══════ Left Sidebar ═══════ */}
+          <aside className="w-60 text-white flex flex-col flex-shrink-0 overflow-y-auto overflow-x-hidden" style={{background:"linear-gradient(180deg,#1B2838 0%,#2C3E50 100%)",scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,0.15) transparent"}}>
+            <div className="px-5 py-5 flex items-center gap-3" style={{borderBottom:"1px solid rgba(255,255,255,0.08)"}}>
+              <svg width="36" height="36" viewBox="0 0 48 48">
+                <ellipse cx="24" cy="16" rx="18" ry="6" fill="#F4D03F" stroke="#D4AC0D" strokeWidth="1.5"/>
+                <rect x="14" y="10" width="20" height="8" rx="3" fill="#F4D03F" stroke="#D4AC0D" strokeWidth="1.5"/>
+                <rect x="14" y="15" width="20" height="3" fill="#E74C3C"/>
+                <circle cx="24" cy="28" r="10" fill="#FDFEFE" stroke="#2C3E50" strokeWidth="1.5"/>
+                <circle cx="20" cy="26" r="2.5" fill="#2C3E50"/>
+                <circle cx="28" cy="26" r="2.5" fill="#2C3E50"/>
+                <path d="M20 33 L22 31 L24 33 L26 31 L28 33" stroke="#2C3E50" strokeWidth="1.2" fill="none"/>
+                <line x1="10" y1="38" x2="38" y2="42" stroke="#FDFEFE" strokeWidth="3" strokeLinecap="round"/>
+                <line x1="10" y1="42" x2="38" y2="38" stroke="#FDFEFE" strokeWidth="3" strokeLinecap="round"/>
+              </svg>
+              <div>
+                <h1 style={{color:"#F4D03F",fontSize:"1.1rem",fontWeight:800,letterSpacing:"0.05em"}}>{"\u6d77\u8d3c\u5de5\u4f5c\u53f0"}</h1>
+                <p style={{color:"rgba(255,255,255,0.45)",fontSize:"0.65rem",marginTop:2}}>{greeting} · {dateLabel}</p>
+              </div>
+            </div>
+            <nav className="flex-1 px-3 py-3 space-y-1">
+              {navOrder.map(({key, icon, label, crew}) => (
+                <button key={key}
+                  draggable
+                  onDragStart={()=>handleDragStart(key)}
+                  onDragOver={(e)=>handleDragOver(e,key)}
+                  onDrop={()=>handleDrop(key)}
+                  onDragEnd={handleDragEnd}
+                  onClick={()=>setPage(key)}
+                  className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 cursor-grab active:cursor-grabbing " +
+                    (page===key ? "text-white shadow-lg" : "text-gray-400 hover:text-gray-200")}
+                  style={Object.assign({},
+                    page===key ? {background:"rgba(192,57,43,0.35)"} : {},
+                    dragOverKey===key ? {borderTop:"2px solid rgba(244,208,63,0.8)"} : {},
+                    dragItemKey===key ? {opacity:0.4} : {}
+                  )}>
+                  <CrewBadge name={crew} size={28}/>
+                  <span className="font-medium">{label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="p-4" style={{borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+              <button onClick={exportData} className="w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 justify-center mb-2" style={{background:"rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.7)",border:"1px solid rgba(255,255,255,0.15)"}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.2)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"}>
+                <Icon name="download" size={13}/>{" \u5bfc\u51fa\u6570\u636e"}
+              </button>
+              <button onClick={()=>fileRef.current?.click()} className="w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 justify-center" style={{background:"rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.7)",border:"1px solid rgba(255,255,255,0.15)"}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.2)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"}>
+                <Icon name="upload" size={13}/>{" \u5bfc\u5165\u6570\u636e"}
+              </button>
+              <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={importData}/>
+            </div>
+          </aside>
+
+          {/* ═══════ Main Content ═══════ */}
+          <main className="flex-1 overflow-y-auto p-8" style={{background:"var(--op-cream)"}}>
+
+              {/* ══════ DASHBOARD PAGE ══════ */}
+              {page === "dashboard" && (
+                <div>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold" style={{color:"var(--op-deep-blue)"}}>{greeting}</h2>
+                    <p className="text-sm text-gray-400 mt-1">{dateLabel}</p>
+                  </div>
+                  <div className="grid grid-cols-5 gap-4 mb-6">
+                    <div className="op-card p-4 text-center">
+                      <p style={{color:"#F4D03F",fontSize:"1.5rem",fontWeight:700,margin:0}}>{todayTodos.length > 0 ? Math.round((doneC/todayTodos.length)*100) : 0}<span style={{fontSize:"0.8rem",fontWeight:400}}>%</span></p>
+                      <p className="text-xs text-gray-400 mt-1">{"\u5f85\u529e\u5b8c\u6210\u7387"}</p>
+                    </div>
+                    <div className="op-card p-4 text-center">
+                      <p style={{color:"#27AE60",fontSize:"1.5rem",fontWeight:700,margin:0}}>{todayHabitsDone}<span style={{fontSize:"0.8rem",fontWeight:400}}>/{habits.length}</span></p>
+                      <p className="text-xs text-gray-400 mt-1">{"\u6253\u5361\u5b8c\u6210"}</p>
+                    </div>
+                    <div className="op-card p-4 text-center">
+                      <p style={{color:"#8E44AD",fontSize:"1.5rem",fontWeight:700,margin:0}}>{todaySessions.length}<span style={{fontSize:"0.8rem",fontWeight:400}}>{"\u4e2a"}</span></p>
+                      <p className="text-xs text-gray-400 mt-1">{"\u756a\u8304\u4e13\u6ce8"}</p>
+                    </div>
+                    <div className="op-card p-4 text-center">
+                      <p style={{color:"#E74C3C",fontSize:"1.5rem",fontWeight:700,margin:0}}>{"\u00a5"}{todayExpenses.toFixed(0)}</p>
+                      <p className="text-xs text-gray-400 mt-1">{"\u4eca\u65e5\u652f\u51fa"}</p>
+                    </div>
+                    <div className="op-card p-4 text-center">
+                      <p style={{color:"#F4D03F",fontSize:"1.5rem",fontWeight:700,margin:0}}>{todayMoodEntry ? todayMoodEntry.mood : "\u2014"}</p>
+                      <p className="text-xs text-gray-400 mt-1">{"\u4eca\u65e5\u5fc3\u60c5"}</p>
+                    </div>
+                  </div>
+                  <div className="op-card p-5">
+                    <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
+                      <Icon name="activity" size={16} style={{color:"var(--op-pirate-red)"}}/>{"\u4eca\u65e5\u6d3b\u52a8\u6458\u8981"}
+                    </h3>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 mb-2">{"\u5f85\u529e\u4e8b\u9879"}</p>
+                        {todayTodos.length === 0 ? (
+                          <p className="text-sm text-gray-300">{"\u6682\u65e0\u5f85\u529e"}</p>
+                        ) : todayTodos.slice(0,5).map(t => (
+                          <div key={t.id} className="flex items-center gap-2 text-sm py-1">
+                            <span className={"w-1.5 h-1.5 rounded-full flex-shrink-0 " + (t.done ? "bg-emerald-400" : "bg-gray-300")}/>
+                            <span className={t.done ? "line-through text-gray-300" : "text-gray-600"}>{t.text.length > 20 ? t.text.slice(0,20) + "..." : t.text}</span>
+                          </div>
+                        ))}
+                        {todayTodos.length > 5 && <p className="text-xs text-gray-300 mt-1">{"+ " + (todayTodos.length - 5) + " \u66f4\u591a..."}</p>}
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 mb-2">{"\u8fd0\u52a8\u8bb0\u5f55"}</p>
+                        {todayExercises.length === 0 ? (
+                          <p className="text-sm text-gray-300">{"\u4eca\u65e5\u672a\u8fd0\u52a8"}</p>
+                        ) : todayExercises.map(x => (
+                          <div key={x.id} className="flex items-center gap-2 text-sm py-1">
+                            <span className="text-orange-400">{"\u2022"}</span>
+                            <span className="text-gray-600">{x.type} {x.duration}{"\u5206\u949f"}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-400 mb-2">{"\u996e\u98df\u8bb0\u5f55"}</p>
+                        {todayMeals.length === 0 ? (
+                          <p className="text-sm text-gray-300">{"\u4eca\u65e5\u672a\u8bb0\u5f55"}</p>
+                        ) : todayMeals.map(x => (
+                          <div key={x.id} className="flex items-center gap-2 text-sm py-1">
+                            <span className="text-blue-400">{"\u2022"}</span>
+                            <span className="text-gray-600">{x.content.length > 15 ? x.content.slice(0,15) + "..." : x.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* ──────── SCHEDULE PAGE ──────── */}
+            {page === "schedule" && (
+
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <CrewBadge name="law" size={36}/>
+                    <div>
+                    <h2 className="text-2xl font-bold text-gray-800">日程管理</h2>
+                    <p className="text-sm text-gray-400 mt-1">管理待办事项，记录每日打卡</p>
+                    </div>
+                  </div>
+                  <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-100">
+                    <button onClick={()=>setView("list")}
+                      className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all " + (view==="list" ? "bg-indigo-500 text-white shadow" : "text-gray-500")}>
+                      <Icon name="list" size={15}/> 列表
+                    </button>
+                    <button onClick={()=>setView("calendar")}
+                      className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all " + (view==="calendar" ? "bg-indigo-500 text-white shadow" : "text-gray-500")}>
+                      <Icon name="calendar" size={15}/> 日历
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Todo List / Calendar (full-width) ── */}
+                <div>
+                    {view === "list" ? (
+                      /* ── List View ── */
+                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-50">
+                          <h3 className="font-semibold text-gray-700">今日待办</h3>
+                          <p className="text-xs text-gray-400 mt-1">{today}</p>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                          {todayTodos.length === 0 ? (
+                            <div className="px-5 py-12 text-center text-gray-300">
+                              <Icon name="checkSquare" size={36} className="mx-auto mb-3 opacity-30"/>
+                              <p className="text-sm">暂无待办事项</p>
+                            </div>
+                          ) : todayTodos.map(t => (
+                            editTodoId === t.id ? (
+                              <div key={t.id} className="px-5 py-3 bg-indigo-50 border-b border-indigo-100">
+                                <div className="flex gap-2 mb-2">
+                                  <input value={editTodoText} onChange={e=>setEditTodoText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEditTodo();if(e.key==="Escape")setEditTodoId(null);}}
+                                    className="flex-1 px-3 py-2 rounded-lg border border-indigo-200 text-sm bg-white" autoFocus/>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                  <input type="date" value={editTodoDate} onChange={e=>setEditTodoDate(e.target.value)}
+                                    className="px-2 py-1.5 rounded-lg border border-indigo-200 text-xs bg-white"/>
+                                  <select value={editTodoPri} onChange={e=>setEditTodoPri(e.target.value)}
+                                    className="px-2 py-1.5 rounded-lg border border-indigo-200 text-xs bg-white">
+                                    <option value="normal">{"\u666e\u901a"}</option>
+                                    <option value="medium">{"\u4e00\u822c"}</option>
+                                    <option value="high">{"\u7d27\u6025"}</option>
+                                  </select>
+                                  <input value={editTodoTag} onChange={e=>setEditTodoTag(e.target.value)}
+                                    placeholder={"\u6807\u7b7e"} className="px-2 py-1.5 rounded-lg border border-indigo-200 text-xs bg-white" style={{width:"5rem"}}/>
+                                  <button onClick={saveEditTodo}
+                                    className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-xs hover:bg-indigo-600 transition-colors flex items-center gap-1">
+                                    <Icon name="check" size={12}/>{"\u4fdd\u5b58"}
+                                  </button>
+                                  <button onClick={()=>setEditTodoId(null)}
+                                    className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-xs hover:bg-gray-200 transition-colors">
+                                    {"\u53d6\u6d88"}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                            <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors group">
+                              <button onClick={()=>toggleTodo(t.id)}
+                                className={"w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all " +
+                                  (t.done ? "bg-emerald-500 border-emerald-500" : "border-gray-300 hover:border-indigo-400")}>
+                                {t.done && <Icon name="check" size={11} className="text-white"/>}
+                              </button>
+                              <span className={"flex-1 text-sm cursor-pointer " + (t.done ? "line-through text-gray-300" : "text-gray-700")}
+                                onClick={()=>startEditTodo(t)}>{t.text}</span>
+                              {t.tag && <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 bg-blue-50 text-blue-500">{t.tag}</span>}
+                              <span className={"text-xs px-2 py-0.5 rounded-full flex-shrink-0 " +
+                                (t.priority==="high" ? "bg-red-50 text-red-500" : t.priority==="medium" ? "bg-amber-50 text-amber-500" : "bg-gray-50 text-gray-400")}>
+                                {t.priority==="high" ? "\u7d27\u6025" : t.priority==="medium" ? "\u4e00\u822c" : "\u666e\u901a"}
+                              </span>
+                              <button onClick={()=>startEditTodo(t)} className="text-gray-200 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                                <Icon name="edit" size={14}/>
+                              </button>
+                              <button onClick={()=>removeTodo(t.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                                <Icon name="trash" size={14}/>
+                              </button>
+                            </div>
+                            )
+                          ))}
+                        </div>
+                        {/* Add todo form */}
+                        <div className="px-5 py-4 bg-gray-50 border-t border-gray-100">
+                          <div className="flex gap-2">
+                            <input value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTodo()}
+                              placeholder="添加新待办..."
+                              className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                            <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}
+                              className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                            <select value={newPri} onChange={e=>setNewPri(e.target.value)}
+                              className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white">
+                              <option value="normal">普通</option>
+                              <option value="medium">一般</option>
+                              <option value="high">紧急</option>
+                            </select>
+                            <input list="tag-suggestions" value={newTag} onChange={e=>setNewTag(e.target.value)}
+                              placeholder="标签" className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"5.5rem"}}/>
+                            <datalist id="tag-suggestions">
+                              {allTags.map(t => <option key={t} value={t}/>)}
+                            </datalist>
+                            <button onClick={addTodo}
+                              className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                              <Icon name="plus" size={14}/> 添加
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── Calendar View ── */
+                      <div className="space-y-4">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                          <div className="flex items-center justify-between mb-5">
+                            <button onClick={()=>setCalDate(new Date(yr,mo-1))} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                              <Icon name="chevronLeft" size={18} className="text-gray-400"/>
+                            </button>
+                            <h3 className="text-lg font-semibold text-gray-700">{yr}年 {CN_MONTHS[mo]}</h3>
+                            <button onClick={()=>setCalDate(new Date(yr,mo+1))} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                              <Icon name="chevronRight" size={18} className="text-gray-400"/>
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-7 gap-1 mb-2">
+                            {["日","一","二","三","四","五","六"].map(d => (
+                              <div key={d} className="text-center text-xs font-medium text-gray-400 py-2">{d}</div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-7 gap-1">
+                            {calDays.map((c,i) => {
+                              const isT = c.date === today;
+                              const isSel = c.date === selectedDate;
+                              const hasT = c.date && todos.some(t => t.date===c.date);
+                              const hasPomo = c.date && pomoSessions.some(s => s.date===c.date);
+                              return (
+                                <button key={i} onClick={()=>{if(c.date){setSelectedDate(c.date);setNewDate(c.date);}}} disabled={!c.date}
+                                  className={"relative text-center py-2.5 rounded-lg text-sm transition-all " +
+                                    (!c.cur ? "text-gray-200 cursor-default" : isSel ? "bg-indigo-100 text-indigo-700 font-semibold ring-2 ring-indigo-400" : isT ? "bg-indigo-500 text-white font-semibold shadow-sm" : "text-gray-600 hover:bg-gray-100 cursor-pointer")}>
+                                  {c.d}
+                                  {!isSel && !isT && c.date && (
+                                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                                      {hasT && <span className="w-1.5 h-1.5 bg-red-400 rounded-full"/>}
+                                      {hasPomo && <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"/>}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                            <p className="text-xs text-gray-400 flex items-center gap-3">
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-400 rounded-full inline-block"/> 有待办</span>
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-400 rounded-full inline-block"/> 有专注</span>
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-indigo-400 rounded-full inline-block ring-2 ring-indigo-200"/> 选中</span>
+                            </p>
+                            {selectedDate && <button onClick={()=>{setSelectedDate(today);setNewDate(today);}} className="text-xs text-indigo-500 hover:text-indigo-700">回到今天</button>}
+                          </div>
+                        </div>
+
+                        {/* Selected date todo list */}
+                        {selectedDate && (
+                          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+                              <div>
+                                <h3 className="font-semibold text-gray-700">{selectedDate} 的待办</h3>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {todos.filter(t=>t.date===selectedDate).length} 项任务 · {todos.filter(t=>t.date===selectedDate&&!t.done).length} 项进行中
+                                  {pomoSessions.filter(s=>s.date===selectedDate).length > 0 && (
+                                    <span className="text-emerald-500"> · {pomoSessions.filter(s=>s.date===selectedDate).length} 个番茄 · {pomoSessions.filter(s=>s.date===selectedDate).reduce((a,s)=>a+s.duration,0)} 分钟</span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="divide-y divide-gray-50">
+                              {todos.filter(t => t.date === selectedDate).length === 0 ? (
+                                <div className="px-5 py-8 text-center text-gray-300">
+                                  <Icon name="checkSquare" size={30} className="mx-auto mb-2 opacity-30"/>
+                                  <p className="text-sm">当日暂无待办</p>
+                                </div>
+                              ) : todos.filter(t => t.date === selectedDate).map(t => (
+                                <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors group">
+                                  <button onClick={()=>toggleTodo(t.id)}
+                                    className={"w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all " +
+                                      (t.done ? "bg-emerald-500 border-emerald-500" : "border-gray-300 hover:border-indigo-400")}>
+                                    {t.done && <Icon name="check" size={11} className="text-white"/>}
+                                  </button>
+                                  <span className={"flex-1 text-sm " + (t.done ? "line-through text-gray-300" : "text-gray-700")}>{t.text}</span>
+                                  {t.tag && <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 bg-blue-50 text-blue-500">{t.tag}</span>}
+                                  <span className={"text-xs px-2 py-0.5 rounded-full flex-shrink-0 " +
+                                    (t.priority==="high" ? "bg-red-50 text-red-500" : t.priority==="medium" ? "bg-amber-50 text-amber-500" : "bg-gray-50 text-gray-400")}>
+                                    {t.priority==="high" ? "紧急" : t.priority==="medium" ? "一般" : "普通"}
+                                  </span>
+                                  <button onClick={()=>removeTodo(t.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                                    <Icon name="trash" size={14}/>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="px-5 py-4 bg-gray-50 border-t border-gray-100">
+                              <div className="flex gap-2">
+                                <input value={newTodo} onChange={e=>setNewTodo(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTodo()}
+                                  placeholder={"添加待办到 " + selectedDate + " ..."}
+                                  className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                                <select value={newPri} onChange={e=>setNewPri(e.target.value)}
+                                  className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white">
+                                  <option value="normal">普通</option>
+                                  <option value="medium">一般</option>
+                                  <option value="high">紧急</option>
+                                </select>
+                                <input list="tag-suggestions" value={newTag} onChange={e=>setNewTag(e.target.value)}
+                                  placeholder="标签" className="px-2 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"5.5rem"}}/>
+                                <button onClick={addTodo}
+                                  className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                                  <Icon name="plus" size={14}/> 添加
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                </div>
+              </div>
+            
+            )}
+
+            {/* ──────── HABITS PAGE ──────── */}
+            {page === "habits" && (
+
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <CrewBadge name="zoro" size={36}/>
+                    <div>
+                  <h2 className="text-2xl font-bold text-gray-800">习惯打卡</h2>
+                  <p className="text-sm text-gray-400 mt-1">培养良好习惯，用番茄时钟专注记录</p>
+                    </div>
+                  </div>
+                  <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-100">
+                    <button onClick={()=>setHabitView("today")}
+                      className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all " + (habitView==="today" ? "bg-indigo-500 text-white shadow" : "text-gray-500")}>
+                      <Icon name="checkSquare" size={15}/> 今日
+                    </button>
+                    <button onClick={()=>setHabitView("calendar")}
+                      className={"flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all " + (habitView==="calendar" ? "bg-indigo-500 text-white shadow" : "text-gray-500")}>
+                      <Icon name="calendar" size={15}/> 日历
+                    </button>
+                  </div>
+                </div>
+
+                {habitView === "today" ? (
+                <div>
+                {/* ── Habits grid ── */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-700 text-sm flex items-center gap-2">
+                      <Icon name="checkSquare" size={15} className="text-emerald-400"/> 今日打卡
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400">{todayHabitsDone}/{habits.length} 已完成</span>
+                      <div className="w-24 bg-gray-100 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full transition-all duration-500" style={{width: (habits.length > 0 ? (todayHabitsDone/habits.length)*100 : 0) + "%", background: todayHabitsDone === habits.length && habits.length > 0 ? "#10b981" : "#6366f1"}}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3" style={{gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))"}}>
+                    {habits.map(h => {
+                      const done = (habitCheckins[todayStr()] || []).includes(h.id);
+                      return (
+                        <div key={h.id} className={"group flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border " + (done ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-gray-100 hover:border-gray-200")}
+                          onClick={()=>toggleHabitToday(h.id)}>
+                          <div className={"w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all " + (done ? "" : "border-gray-300")}
+                            style={done ? {background:h.color, borderColor:h.color} : {}}>
+                            {done && <Icon name="check" size={11} className="text-white"/>}
+                          </div>
+                          <span className={"flex-1 text-sm " + (done ? "line-through text-gray-300" : "text-gray-600")}>{h.name}</span>
+                          <button onClick={(e)=>{e.stopPropagation();removeHabit(h.id);}} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <Icon name="trash" size={12}/>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <input value={newHabitName} onChange={e=>setNewHabitName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addHabit()}
+                      placeholder="添加新习惯..."
+                      className="flex-1 max-w-xs px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                    <button onClick={addHabit} className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1">
+                      <Icon name="plus" size={14}/> 添加
+                    </button>
+                  </div>
+                </div>
+                </div>
+                ) : (
+                <div>
+                {/* ── Calendar View ── */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <button onClick={()=>{
+                      if(habitCalMonth===0){setHabitCalMonth(11);setHabitCalYear(habitCalYear-1);}
+                      else setHabitCalMonth(habitCalMonth-1);
+                    }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                      <Icon name="chevronLeft" size={18} className="text-gray-400"/>
+                    </button>
+                    <h3 className="text-lg font-semibold text-gray-700">{habitCalYear}年 {CN_MONTHS[habitCalMonth]}</h3>
+                    <button onClick={()=>{
+                      if(habitCalMonth===11){setHabitCalMonth(0);setHabitCalYear(habitCalYear+1);}
+                      else setHabitCalMonth(habitCalMonth+1);
+                    }} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                      <Icon name="chevronRight" size={18} className="text-gray-400"/>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {["一","二","三","四","五","六","日"].map(d => (
+                      <div key={d} className="text-center text-xs text-gray-400 py-1 font-medium">{d}</div>
+                    ))}
+                  </div>
+                  {(() => {
+                    const firstDay = new Date(habitCalYear, habitCalMonth, 1);
+                    const startDay = (firstDay.getDay() || 7) - 1;
+                    const daysInMonth = new Date(habitCalYear, habitCalMonth + 1, 0).getDate();
+                    const cells = [];
+                    for(let i=0; i<startDay; i++) cells.push(null);
+                    for(let d=1; d<=daysInMonth; d++) cells.push(d);
+                    return (
+                      <div className="grid grid-cols-7 gap-1">
+                        {cells.map((day, idx) => {
+                          if(!day) return <div key={"e"+idx} className="h-10"/>;
+                          const ds = habitCalYear+"-"+String(habitCalMonth+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+                          const dayCheckins = (habitCheckins[ds]||[]).filter(id => habits.some(h=>h.id===id));
+                          const doneCount = dayCheckins.length;
+                          const isToday = ds === todayStr();
+                          const isSel = ds === habitSelDate;
+                          return (
+                            <div key={ds} onClick={()=>setHabitSelDate(ds)}
+                              className={"h-10 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all text-sm relative " +
+                                (isSel ? "bg-indigo-100 ring-2 ring-indigo-400" : isToday ? "bg-indigo-50" : "hover:bg-gray-50")}>
+                              <span className={"text-xs " + (isToday ? "text-indigo-600 font-bold" : "text-gray-600")}>{day}</span>
+                              {doneCount > 0 && (
+                                <div className="flex gap-0.5 mt-0.5">
+                                  {dayCheckins.slice(0,3).map(hid => {
+                                    const hab = habits.find(h=>h.id===hid);
+                                    return hab ? <span key={hid} className="w-1.5 h-1.5 rounded-full" style={{background:hab.color}}/> : null;
+                                  })}
+                                  {dayCheckins.length > 3 && <span className="text-gray-300" style={{fontSize:8}}>+</span>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+                {/* Selected date habits */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-700 text-sm flex items-center gap-2">
+                      <Icon name="checkSquare" size={15} className="text-emerald-400"/> {habitSelDate} 打卡记录
+                    </h4>
+                    <span className="text-xs text-gray-400">
+                      {(habitCheckins[habitSelDate]||[]).filter(id=>habits.some(h=>h.id===id)).length}/{habits.length} 已完成
+                    </span>
+                  </div>
+                  {habits.length === 0 ? (
+                    <div className="py-8 text-center text-gray-300">
+                      <Icon name="checkSquare" size={30} className="mx-auto mb-2 opacity-30"/>
+                      <p className="text-sm">暂无习惯</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3" style={{gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))"}}>
+                      {habits.map(h => {
+                        const done = (habitCheckins[habitSelDate] || []).includes(h.id);
+                        return (
+                          <div key={h.id} className={"flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer border " + (done ? "bg-emerald-50 border-emerald-200" : "bg-gray-50 border-gray-100 hover:border-gray-200")}
+                            onClick={()=>toggleHabitDate(h.id, habitSelDate)}>
+                            <div className={"w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all " + (done ? "" : "border-gray-300")}
+                              style={done ? {background:h.color, borderColor:h.color} : {}}>
+                              {done && <Icon name="check" size={11} className="text-white"/>}
+                            </div>
+                            <span className={"flex-1 text-sm " + (done ? "line-through text-gray-300" : "text-gray-600")}>{h.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                </div>
+                )}
+
+                {/* ── Pomodoro Timer + Duration Report ── */}
+                <div className="flex gap-6 mt-6">
+                  <div className="w-80 flex-shrink-0">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                      <h4 className="font-semibold text-gray-700 mb-5 text-sm flex items-center gap-2">
+                        <Icon name="clock" size={15} className="text-indigo-400"/> 番茄时钟
+                      </h4>
+                      <div className="flex justify-center mb-5">
+                        <div className="relative" style={{width:160, height:160}}>
+                          <svg viewBox="0 0 160 160" style={{transform:"rotate(-90deg)"}}>
+                            <circle cx="80" cy="80" r="70" fill="none" stroke="#f3f4f6" strokeWidth="8"/>
+                            <circle cx="80" cy="80" r="70" fill="none"
+                              stroke={pomoMode === "work" ? "#6366f1" : "#10b981"}
+                              strokeWidth="8" strokeLinecap="round"
+                              strokeDasharray={440}
+                              strokeDashoffset={pomoMode === "work" ? 440 * (1 - pomoTime / WORK_DURATION) : 440 * (1 - pomoTime / BREAK_DURATION)}/>
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-3xl font-bold text-gray-800" style={{fontVariantNumeric:"tabular-nums"}}>
+                              {String(Math.floor(pomoTime/60)).padStart(2,"0")}:{String(pomoTime%60).padStart(2,"0")}
+                            </span>
+                            <span className={"text-xs mt-1 " + (pomoMode==="work" ? "text-indigo-400" : "text-emerald-400")}>
+                              {pomoMode === "work" ? "专注中" : "休息中"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <select value={pomoHabitId} onChange={e=>setPomoHabitId(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm mb-4 bg-white">
+                        <option value="">选择关联习惯...</option>
+                        {habits.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                      </select>
+                      <div className="flex justify-center gap-2 flex-wrap">
+                        {pomoRunning ? (
+                          <button onClick={pausePomo} className="px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm hover:bg-amber-600 transition-colors font-medium shadow-sm">暂停</button>
+                        ) : (
+                          <button onClick={startPomo} className="px-5 py-2.5 bg-indigo-500 text-white rounded-xl text-sm hover:bg-indigo-600 transition-colors font-medium shadow-sm">开始</button>
+                        )}
+                        {pomoMode === "work" && (WORK_DURATION - pomoTime) > 0 && (
+                          <button onClick={finishPomo} className="px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm hover:bg-emerald-600 transition-colors font-medium shadow-sm flex items-center gap-1">
+                            <Icon name="check" size={14}/> 结束保存
+                          </button>
+                        )}
+                        <button onClick={resetPomo} className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-sm hover:bg-gray-200 transition-colors">重置</button>
+                        <button onClick={skipPomo} className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-sm hover:bg-gray-200 transition-colors">跳过</button>
+                      </div>
+                      {todaySessions.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-100">
+                          <p className="text-xs text-gray-400 mb-2">今日专注记录</p>
+                          <div className="space-y-1.5 max-h-24 overflow-y-auto">
+                            {todaySessions.slice().reverse().map((s,i) => {
+                              const hab = habits.find(h => h.id === s.habitId);
+                              return (
+                                <div key={i} className="flex items-center justify-between text-xs">
+                                  <span className="text-gray-500">{s.time}</span>
+                                  <span className="flex items-center gap-1.5">
+                                    {hab && <span className="w-2 h-2 rounded-full" style={{background:hab.color}}/>}
+                                    <span className="text-gray-600">{hab ? hab.name : "未关联"}</span>
+                                  </span>
+                                  <span className="text-gray-400">{s.duration}分钟</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-indigo-500 mt-2 font-medium">今日专注总计：{todayMins} 分钟</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                      <div className="flex items-center justify-between mb-5">
+                        <h4 className="font-semibold text-gray-700 text-sm flex items-center gap-2">
+                          <Icon name="list" size={15} className="text-indigo-400"/> 本周习惯时长报表
+                        </h4>
+                        <span className="text-xs text-gray-400">本周专注 {totalWeekMins} 分钟 · {pomoSessions.filter(s=>weekDates.includes(s.date)).length} 个番茄</span>
+                      </div>
+                      {habits.length === 0 ? (
+                        <div className="py-10 text-center text-gray-300">
+                          <Icon name="clock" size={36} className="mx-auto mb-3 opacity-30"/>
+                          <p className="text-sm">暂无习惯数据</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {habits.map(h => {
+                            const mins = habitWeeklyMins(h.id);
+                            const maxMins = Math.max(...habits.map(hh => habitWeeklyMins(hh.id)), 30);
+                            const pct = Math.min(100, (mins / maxMins) * 100);
+                            const doneDays = weekDates.filter(d => (habitCheckins[d] || []).includes(h.id)).length;
+                            return (
+                              <div key={h.id}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:h.color}}/>
+                                    <span className="text-sm text-gray-600">{h.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs text-gray-400">打卡 {doneDays}/7 天</span>
+                                    <span className="text-sm font-medium" style={{color:h.color}}>{mins} 分钟</span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-gray-50 rounded-full h-2.5">
+                                  <div className="h-2.5 rounded-full transition-all duration-700" style={{width: pct + "%", background:h.color}}/>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {pomoSessions.filter(s => weekDates.includes(s.date)).length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-100">
+                          <p className="text-xs text-gray-400 mb-3">每日专注时长</p>
+                          <div className="flex items-end gap-1.5" style={{height:80}}>
+                            {weekDates.map((d,i) => {
+                              const dayMins = pomoSessions.filter(s => s.date === d).reduce((a,s) => a+s.duration, 0);
+                              const maxDay = Math.max(...weekDates.map(dd => pomoSessions.filter(s=>s.date===dd).reduce((a,s)=>a+s.duration,0)), 30);
+                              const h = maxDay > 0 ? (dayMins / maxDay) * 70 : 0;
+                              const isToday = d === todayStr();
+                              return (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                  <span className="text-xs text-gray-400" style={{fontSize:10}}>{dayMins > 0 ? dayMins + "m" : ""}</span>
+                                  <div className="w-full rounded-t transition-all duration-500" style={{height: Math.max(h, 2), background: isToday ? "#6366f1" : "#c7d2fe"}}/>
+                                  <span className={"text-xs " + (isToday ? "text-indigo-500 font-semibold" : "text-gray-300")} style={{fontSize:10}}>
+                                    {["一","二","三","四","五","六","日"][i]}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {totalWeekMins > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-gray-400 mb-2">习惯时长对比</p>
+                            <svg viewBox="0 0 280 140" className="w-full">
+                              {habits.map((h, i) => {
+                                const mins = habitWeeklyMins(h.id);
+                                const maxM = Math.max(...habits.map(hh => habitWeeklyMins(hh.id)), 1);
+                                const barH = (mins / maxM) * 90;
+                                const x = 10 + i * (260 / habits.length);
+                                const w = Math.max(260 / habits.length - 6, 8);
+                                return (
+                                  <g key={h.id}>
+                                    <rect x={x} y={110 - barH} width={w} height={barH} rx="3" fill={h.color} opacity="0.85"/>
+                                    {mins > 0 && <text x={x + w/2} y={105 - barH} textAnchor="middle" fontSize="9" fill="#666">{mins}m</text>}
+                                    <text x={x + w/2} y="128" textAnchor="middle" fontSize="8" fill="#999">{h.name.length > 4 ? h.name.slice(0,4) + ".." : h.name}</text>
+                                  </g>
+                                );
+                              })}
+                              <line x1="5" y1="112" x2="275" y2="112" stroke="#e5e7eb" strokeWidth="1"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-2">时间分布</p>
+                            <div className="flex items-center gap-3">
+                              <svg viewBox="0 0 100 100" style={{width:100, height:100}}>
+                                {(() => {
+                                  let cumAngle = 0;
+                                  const slices = habits.filter(h => habitWeeklyMins(h.id) > 0).map(h => {
+                                    const mins = habitWeeklyMins(h.id);
+                                    const angle = (mins / totalWeekMins) * 360;
+                                    const startAngle = cumAngle;
+                                    cumAngle += angle;
+                                    const endAngle = cumAngle;
+                                    const r = 42, cx = 50, cy = 50;
+                                    const toRad = (deg) => (deg - 90) * Math.PI / 180;
+                                    const x1 = cx + r * Math.cos(toRad(startAngle)), y1 = cy + r * Math.sin(toRad(startAngle));
+                                    const x2 = cx + r * Math.cos(toRad(endAngle)), y2 = cy + r * Math.sin(toRad(endAngle));
+                                    return `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${angle > 180 ? 1 : 0} 1 ${x2} ${y2} Z`;
+                                  });
+                                  return slices.map((path, i) => (
+                                    <path key={i} d={path} fill={habits.filter(h => habitWeeklyMins(h.id) > 0)[i].color} opacity="0.85"/>
+                                  ));
+                                })()}
+                                <circle cx="50" cy="50" r="22" fill="white"/>
+                                <text x="50" y="48" textAnchor="middle" fontSize="8" fill="#666" fontWeight="600">{totalWeekMins}</text>
+                                <text x="50" y="58" textAnchor="middle" fontSize="6" fill="#999">分钟</text>
+                              </svg>
+                              <div className="space-y-1">
+                                {habits.filter(h => habitWeeklyMins(h.id) > 0).map(h => {
+                                  const mins = habitWeeklyMins(h.id);
+                                  const pct = Math.round((mins / totalWeekMins) * 100);
+                                  return (
+                                    <div key={h.id} className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{background:h.color}}/>
+                                      <span className="text-xs text-gray-500" style={{fontSize:10}}>{h.name.length > 5 ? h.name.slice(0,5)+".." : h.name}</span>
+                                      <span className="text-xs text-gray-400" style={{fontSize:10}}>{pct}%</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            
+            )}
+
+            {/* ──────── DAILY PAGE ──────── */}
+            {page === "daily" && (
+
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                    <CrewBadge name="ace" size={36}/>
+                    <div>
+                  <h2 className="text-2xl font-bold text-gray-800">工作日报</h2>
+                  <p className="text-sm text-gray-400 mt-1">记录每日工作内容，按项目分类归档</p>
+                    </div>
+                </div>
+
+                {/* Editor */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+                  <h3 className="font-semibold text-gray-700 mb-4 text-sm flex items-center gap-2">
+                    <Icon name="save" size={15} className="text-indigo-400"/>
+                    {dd.id ? "编辑日报" : "新建日报"}
+                  </h3>
+                  {/* Auto-generate from todos */}
+                  <div className="mb-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <p className="text-xs text-indigo-500 mb-2 font-medium flex items-center gap-1">
+                      <Icon name="checkSquare" size={12}/> 从已完成待办自动生成日报
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button onClick={()=>genDailyFromTodos("")}
+                        className="px-3 py-1.5 bg-white text-indigo-600 text-xs rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors font-medium">
+                        全部标签
+                      </button>
+                      {allTags.map(t => (
+                        <button key={t} onClick={()=>genDailyFromTodos(t)}
+                          className="px-3 py-1.5 bg-white text-gray-600 text-xs rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                          {t}
+                        </button>
+                      ))}
+                      {allTags.length === 0 && <span className="text-xs text-gray-400 py-1">暂无标签数据，请先给待办打标签</span>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">日期</label>
+                      <input type="date" value={dd.date} onChange={e=>setDd(d=>({...d,date:e.target.value}))}
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm"/>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">所属项目</label>
+                      <input value={dd.project} onChange={e=>setDd(d=>({...d,project:e.target.value}))}
+                        placeholder="例：交建HR项目" className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm"/>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-400 mb-1 block">工作内容（每行一条）</label>
+                    <textarea value={dd.items} onChange={e=>setDd(d=>({...d,items:e.target.value}))}
+                      placeholder={"完成组织模块接口文档评审\n与开发团队对齐同步方案"}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none" rows="4"/>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-400 mb-1 block">问题与风险</label>
+                    <textarea value={dd.issues} onChange={e=>setDd(d=>({...d,issues:e.target.value}))}
+                      placeholder="记录当日遇到的问题或风险（可选）"
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none" rows="2"/>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveDaily}
+                      className="px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-2 font-medium">
+                      <Icon name="save" size={14}/> {dd.id ? "更新" : "保存"}
+                    </button>
+                    {dd.id && (
+                      <button onClick={()=>setDd({date:today,project:"",items:"",issues:""})}
+                        className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                        取消编辑
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* History */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-50">
+                    <h3 className="font-semibold text-gray-700 text-sm">历史记录</h3>
+                  </div>
+                  {dailys.length === 0 ? (
+                    <div className="px-6 py-12 text-center text-gray-300">
+                      <Icon name="fileText" size={36} className="mx-auto mb-3 opacity-30"/>
+                      <p className="text-sm">暂无日报记录</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {dailys.map(r => (
+                        <div key={r.id} className="px-6 py-5 hover:bg-gray-50 transition-colors group">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <span className="text-xs text-gray-400">{r.date}</span>
+                              <span className="ml-3 text-xs font-medium text-indigo-500 bg-indigo-50 px-2.5 py-0.5 rounded-full">{r.project}</span>
+                            </div>
+                            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={()=>editDaily(r)} className="text-gray-300 hover:text-indigo-500 transition-colors">
+                                <Icon name="fileText" size={14}/>
+                              </button>
+                              <button onClick={()=>removeDaily(r.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                                <Icon name="trash" size={14}/>
+                              </button>
+                            </div>
+                          </div>
+                          <ul className="space-y-1 mb-2">
+                            {r.items.map((item,i) => (
+                              <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                <span className="text-indigo-300 mt-1.5 flex-shrink-0">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {r.issues && (
+                            <p className="text-xs text-amber-500 flex items-center gap-1.5 bg-amber-50 px-3 py-2 rounded-lg mt-2">
+                              <Icon name="alertCircle" size={13} className="flex-shrink-0"/> {r.issues}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            
+            )}
+
+            {/* ──────── WEEKLY PAGE ──────── */}
+            {page === "weekly" && (
+
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <CrewBadge name="brook" size={36}/>
+                    <div>
+                    <h2 className="text-2xl font-bold op-nautical-title">航海周报</h2>
+                    <p className="text-sm text-gray-400 mt-1">按项目分类记录每周进展与计划</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 rounded-lg p-1" style={{background:"#FAF0DC",border:"2px solid #8B7355",boxShadow:"2px 2px 0 rgba(139,115,85,0.2)"}}>
+                      <button onClick={()=>setSelWeek(changeWeek(selWeek,-1))} className="p-2 rounded-lg transition-colors" style={{color:"#5D4037"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,115,85,0.15)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <Icon name="chevronLeft" size={16}/>
+                      </button>
+                      <span className="text-sm font-bold px-3" style={{minWidth:"8rem",textAlign:"center",color:"#5D4037",fontFamily:"Georgia,'Times New Roman',serif"}}>{fmtWeek(selWeek)}</span>
+                      <button onClick={()=>setSelWeek(changeWeek(selWeek,1))} className="p-2 rounded-lg transition-colors" style={{color:"#5D4037"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(139,115,85,0.15)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <Icon name="chevronRight" size={16}/>
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1 rounded-lg px-2 py-1" style={{background:"#FAF0DC",border:"2px solid #8B7355"}}>
+                      <Icon name="calendar" size={14} style={{color:"#8B7355"}}/>
+                      <input type="date" value={weekPickerDate}
+                        onChange={e=>{
+                          setWeekPickerDate(e.target.value);
+                          if(e.target.value){
+                            const d=new Date(e.target.value+"T00:00:00");
+                            if(!isNaN(d.getTime())){ setSelWeek(getISOWeek(d)); }
+                          }
+                        }}
+                        className="text-xs bg-transparent border-none outline-none cursor-pointer"
+                        style={{color:"#5D4037",fontFamily:"Georgia,'Times New Roman',serif"}}
+                      />
+                    </div>
+                    {selWeek !== curWeek && (
+                      <button onClick={()=>{setSelWeek(curWeek);setWeekPickerDate("");}}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                        style={{background:"#FAF0DC",border:"1px solid #D4B896",color:"#8B7355"}}
+                        onMouseEnter={e=>e.currentTarget.style.background="#F0E4CC"}
+                        onMouseLeave={e=>e.currentTarget.style.background="#FAF0DC"}>
+                        回到本周
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Editor */}
+                <div className="op-nautical p-6 mb-6">
+                  <h3 className="font-semibold mb-4 text-sm flex items-center gap-2" style={{color:"#5D4037"}}>
+                    <Icon name="save" size={15} style={{color:"#8B7355"}}/>
+                    {wd.id ? "编辑周报" : "新建周报"} — {fmtWeek(selWeek)}
+                  </h3>
+                  {/* Auto-generate from daily reports */}
+                  <div className="mb-4 p-3 rounded-xl flex items-center justify-between" style={{background:"#FAF0DC",border:"1px solid #D4B896"}}>
+                    <div>
+                      <p className="text-xs font-medium flex items-center gap-1" style={{color:"#8B6914"}}>
+                        <Icon name="book" size={12}/> 从日报自动汇总本周完成项
+                      </p>
+                      <p className="text-xs mt-1" style={{color:"#A0856E"}}>
+                        当前周有 {dailys.filter(r => { const [y,w]=selWeek.split("-W").map(Number); const j4=new Date(y,0,4); const dw=j4.getDay()||7; const mon=new Date(j4); mon.setDate(j4.getDate()-dw+1+(w-1)*7); return Array.from({length:7},(_,i)=>{const dd=new Date(mon);dd.setDate(mon.getDate()+i);return dd.getFullYear()+"-"+String(dd.getMonth()+1).padStart(2,"0")+"-"+String(dd.getDate()).padStart(2,"0");}).includes(r.date); }).length} 条日报
+                      </p>
+                    </div>
+                    <button onClick={genWeeklyFromDailys}
+                      className="px-4 py-2 text-white rounded-lg text-xs transition-colors font-medium flex items-center gap-1 flex-shrink-0" style={{background:"var(--op-pirate-red)"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#A93226"} onMouseLeave={e=>e.currentTarget.style.background="var(--op-pirate-red)"}>
+                      <Icon name="checkSquare" size={12}/> 自动生成
+                    </button>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-xs mb-1 block" style={{color:"#8B7355"}}>所属项目</label>
+                    <input value={wd.project} onChange={e=>setWd(d=>({...d,project:e.target.value}))}
+                      placeholder="例：交建HR项目" className="w-full px-3 py-2.5 rounded-lg border text-sm" style={{background:"#FFFDF7",borderColor:"#D4B896",color:"#5D4037"}}/>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-xs mb-1 block" style={{color:"#8B7355"}}>本周完成（每行一条）</label>
+                      <textarea value={wd.completed} onChange={e=>setWd(d=>({...d,completed:e.target.value}))}
+                        placeholder={"完成接口文档定稿\n通过技术评审"}
+                        className="w-full px-3 py-2.5 rounded-lg border text-sm resize-none" style={{background:"#FFFDF7",borderColor:"#D4B896",color:"#5D4037"}} rows="4"/>
+                    </div>
+                    <div>
+                      <label className="text-xs mb-1 block" style={{color:"#8B7355"}}>下周计划（每行一条）</label>
+                      <textarea value={wd.planned} onChange={e=>setWd(d=>({...d,planned:e.target.value}))}
+                        placeholder={"启动接口联调\n需求细化"}
+                        className="w-full px-3 py-2.5 rounded-lg border text-sm resize-none" style={{background:"#FFFDF7",borderColor:"#D4B896",color:"#5D4037"}} rows="4"/>
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-xs mb-1 block" style={{color:"#8B7355"}}>风险与问题</label>
+                    <textarea value={wd.risks} onChange={e=>setWd(d=>({...d,risks:e.target.value}))}
+                      placeholder="记录本周风险或需要协调的事项（可选）"
+                      className="w-full px-3 py-2.5 rounded-lg border text-sm resize-none" style={{background:"#FFFDF7",borderColor:"#D4B896",color:"#5D4037"}} rows="2"/>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveWeekly}
+                      className="px-5 py-2.5 text-white rounded-lg text-sm transition-colors flex items-center gap-2 font-medium" style={{background:"var(--op-pirate-red)"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#A93226"} onMouseLeave={e=>e.currentTarget.style.background="var(--op-pirate-red)"}>
+                      <Icon name="save" size={14}/> {wd.id ? "更新" : "保存"}
+                    </button>
+                    {wd.id && (
+                      <button onClick={()=>setWd({project:"",completed:"",planned:"",risks:""})}
+                        className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                        取消编辑
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reports */}
+                {weekReps.length === 0 ? (
+                  <div className="op-nautical px-6 py-12 text-center text-gray-300">
+                    <Icon name="book" size={36} className="mx-auto mb-3 opacity-30"/>
+                    <p className="text-sm">{fmtWeek(selWeek)} 暂无周报记录</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {weekReps.map(r => (
+                      <div key={r.id} className="op-nautical p-6 hover:shadow-md transition-shadow group">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:"#FAF0DC",border:"1px solid #D4B896"}}>
+                              <Icon name="book" size={16} style={{color:"#8B7355"}}/>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-gray-800">{r.project}</h4>
+                              <p className="text-xs text-gray-400">{fmtWeek(r.week)}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={()=>editWeekly(r)} className="text-gray-300 hover:text-indigo-500 transition-colors">
+                              <Icon name="fileText" size={14}/>
+                            </button>
+                            <button onClick={()=>removeWeekly(r.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                              <Icon name="trash" size={14}/>
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <p className="text-xs font-medium text-emerald-500 mb-2 flex items-center gap-1">
+                              <Icon name="check" size={12}/> 本周完成
+                            </p>
+                            <ul className="space-y-1.5">
+                              {r.completed.map((item,i) => (
+                                <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                  <span className="text-emerald-300 mt-1.5 flex-shrink-0">•</span><span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-blue-500 mb-2 flex items-center gap-1">
+                              <Icon name="clock" size={12}/> 下周计划
+                            </p>
+                            <ul className="space-y-1.5">
+                              {r.planned.map((item,i) => (
+                                <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                  <span className="text-blue-300 mt-1.5 flex-shrink-0">•</span><span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        {r.risks && (
+                          <p className="text-xs text-amber-500 flex items-center gap-1.5 bg-amber-50 px-3 py-2 rounded-lg">
+                            <Icon name="alertCircle" size={13} className="flex-shrink-0"/> {r.risks}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            
+            )}
+
+            {/* ──────── EXERCISE PAGE ──────── */}
+            {page === "exercise" && (
+
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                    <CrewBadge name="usopp" size={36}/>
+                    <div>
+                  <h2 className="text-2xl font-bold text-gray-800">{"\u8fd0\u52a8\u8bb0\u5f55"}</h2>
+                  <p className="text-sm text-gray-400 mt-1">{"\u8bb0\u5f55\u6bcf\u65e5\u8fd0\u52a8\uff0c\u8ffd\u8e2a\u5065\u5eb7\u751f\u6d3b"}</p>
+                    </div>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+                  <h4 className="font-semibold text-gray-700 text-sm mb-4 flex items-center gap-2">
+                    <Icon name="activity" size={15} className="text-orange-400"/>{"\u6dfb\u52a0\u8fd0\u52a8"}
+                  </h4>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {allExTypes.map(t => (
+                      <button key={t} onClick={()=>setExType(t)}
+                        className={"px-3 py-1.5 rounded-lg text-xs transition-all " + (exType===t ? "bg-orange-500 text-white shadow" : "bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <input value={newExType} onChange={e=>setNewExType(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCustomExType()}
+                      placeholder={"\u81ea\u5b9a\u4e49\u8fd0\u52a8\u7c7b\u578b"}
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white flex-1 max-w-xs"/>
+                    <button onClick={addCustomExType}
+                      className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors flex items-center gap-1 flex-shrink-0">
+                      <Icon name="plus" size={14}/>{"\u6dfb\u52a0\u7c7b\u578b"}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="date" value={exDate} onChange={e=>setExDate(e.target.value)}
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"9rem"}}/>
+                    <input type="number" value={exDuration} onChange={e=>setExDuration(e.target.value)}
+                      placeholder={"\u65f6\u957f(\u5206\u949f)"} className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"7rem"}}/>
+                    <input value={exNote} onChange={e=>setExNote(e.target.value)}
+                      placeholder={"\u5907\u6ce8(\u53ef\u9009)"} className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                    <button onClick={addExercise}
+                      className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                      <Icon name="plus" size={14}/>{"\u6dfb\u52a0"}
+                    </button>
+                  </div>
+                </div>
+                {/* Today's records */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                  <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+                    <h4 className="font-semibold text-gray-700 text-sm">{"\u4eca\u65e5\u8fd0\u52a8\u8bb0\u5f55"}</h4>
+                    <span className="text-xs text-gray-400">{todayExercises.reduce((a,x)=>a+x.duration,0)}{"\u5206\u949f"}</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {todayExercises.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-gray-300">
+                        <Icon name="activity" size={30} className="mx-auto mb-2 opacity-30"/>
+                        <p className="text-sm">{"\u4eca\u65e5\u6682\u65e0\u8fd0\u52a8\u8bb0\u5f55"}</p>
+                      </div>
+                    ) : todayExercises.map(x => (
+                      <div key={x.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors group">
+                        <span className="text-xs text-gray-400">{x.date}</span>
+                        <span className="text-sm text-gray-600 flex-1">{x.type}</span>
+                        <span className="text-sm font-medium text-orange-500">{x.duration}{"\u5206\u949f"}</span>
+                        {x.note && <span className="text-xs text-gray-400">{x.note}</span>}
+                        <button onClick={()=>removeExercise(x.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                          <Icon name="trash" size={14}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Overview with period filter */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-700 text-sm">{"\u8fd0\u52a8\u603b\u89c8"}</h4>
+                    <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+                      {[{k:"week",l:"\u672c\u5468"},{k:"month",l:"\u672c\u6708"},{k:"3month",l:"\u8fd13\u6708"}].map(p => (
+                        <button key={p.k} onClick={()=>setExFilterPeriod(p.k)}
+                          className={"px-3 py-1 rounded-md text-xs font-medium transition-all " + (exFilterPeriod===p.k ? "bg-white text-orange-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}>
+                          {p.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {exFilterDates.length <= 14 ? (
+                    <div className="flex items-end gap-1.5" style={{height:80}}>
+                      {exFilterDates.map((d,i) => {
+                        const dayMins = exercises.filter(x=>x.date===d).reduce((a,x)=>a+x.duration,0);
+                        const maxDay = Math.max(...exFilterDates.map(dd=>exercises.filter(x=>x.date===dd).reduce((a,x)=>a+x.duration,0)),30);
+                        const h = maxDay>0?(dayMins/maxDay)*70:0;
+                        const isToday = d===todayStr();
+                        const dayLabel = d.slice(8);
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                            <span className="text-xs text-gray-400" style={{fontSize:10}}>{dayMins>0?dayMins+"m":""}</span>
+                            <div className="w-full rounded-t transition-all duration-500" style={{height:Math.max(h,2),background:isToday?"#f97316":"#fed7aa"}}/>
+                            <span className={"text-xs "+(isToday?"text-orange-500 font-semibold":"text-gray-300")} style={{fontSize:10}}>
+                              {dayLabel}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-end gap-0.5" style={{height:80}}>
+                      {exFilterDates.map((d,i) => {
+                        const dayMins = exercises.filter(x=>x.date===d).reduce((a,x)=>a+x.duration,0);
+                        const maxDay = Math.max(...exFilterDates.map(dd=>exercises.filter(x=>x.date===dd).reduce((a,x)=>a+x.duration,0)),30);
+                        const h = maxDay>0?(dayMins/maxDay)*70:0;
+                        const isToday = d===todayStr();
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center justify-end" title={d + ": " + dayMins + "min"}>
+                            <div className="w-full rounded-t transition-all duration-300" style={{height:Math.max(h,1),background:isToday?"#f97316":"#fed7aa",minWidth:2}}/>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-xs text-orange-500 mt-3 font-medium">
+                    {exFilterPeriod==="week"?"\u672c\u5468":exFilterPeriod==="month"?"\u672c\u6708":"\u8fd13\u6708"}{"\u8fd0\u52a8\u603b\u8ba1: "}{exFilteredMins}{"\u5206\u949f"}
+                  </p>
+                </div>
+              </div>
+
+            )}
+
+            {/* ──────── MOOD PAGE ──────── */}
+            {page === "mood" && (
+
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <CrewBadge name="chopper" size={36}/>
+                    <div>
+                    <h2 className="text-2xl font-bold text-gray-800">{"\u5fc3\u60c5\u65e5\u8bb0"}</h2>
+                    <p className="text-sm text-gray-400 mt-1">{"\u8bb0\u5f55\u6bcf\u65e5\u5fc3\u60c5\uff0c\u5173\u6ce8\u5185\u5fc3\u4e16\u754c"}</p>
+                    </div>
+                  </div>
+                  <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-100">
+                    <button onClick={()=>setMoodView("today")}
+                      className={"px-4 py-2 rounded-lg text-sm transition-all "+(moodView==="today"?"bg-indigo-500 text-white shadow":"text-gray-500")}>
+                      {"\u4eca\u65e5"}
+                    </button>
+                    <button onClick={()=>setMoodView("history")}
+                      className={"px-4 py-2 rounded-lg text-sm transition-all "+(moodView==="history"?"bg-indigo-500 text-white shadow":"text-gray-500")}>
+                      {"\u5386\u53f2"}
+                    </button>
+                  </div>
+                </div>
+                {moodView === "today" && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <h4 className="font-semibold text-gray-700 text-sm mb-4">{"\u4eca\u65e5\u5fc3\u60c5\u5982\u4f55\uff1f"}</h4>
+                    <div className="flex justify-center gap-4 mb-6">
+                      {MOOD_OPTIONS.map(m => (
+                        <button key={m.emoji} onClick={()=>setCurMood(m.emoji)}
+                          className={"flex flex-col items-center gap-1 p-3 rounded-xl transition-all " + (curMood===m.emoji?"bg-indigo-50 border-2 border-indigo-300 scale-110":"border-2 border-transparent hover:bg-gray-50")}
+                          style={curMood===m.emoji?{transform:"scale(1.1)"}:{}}>
+                          <span className="text-3xl">{m.emoji}</span>
+                          <span className="text-xs text-gray-500">{m.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <textarea value={moodContent} onChange={e=>setMoodContent(e.target.value)}
+                      placeholder={"\u5199\u70b9\u4ec0\u4e48\u2026\u2026(\u53ef\u9009)"}
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none mb-4" rows="3"/>
+                    <button onClick={saveMood} disabled={!curMood}
+                      className={"px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 " + (curMood?"bg-indigo-500 text-white hover:bg-indigo-600":"bg-gray-100 text-gray-400 cursor-not-allowed")}>
+                      <Icon name="save" size={14}/>{"\u4fdd\u5b58\u5fc3\u60c5"}
+                    </button>
+                    {moods.filter(x=>x.date===todayStr()).length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="text-xs text-gray-400 mb-2">{"\u4eca\u65e5\u8bb0\u5f55"}</p>
+                        {moods.filter(x=>x.date===todayStr()).map((x,i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm py-1">
+                            <span className="text-xl">{x.mood}</span>
+                            <span className="text-gray-500">{x.label}</span>
+                            {x.content && <span className="text-gray-400 text-xs">- {x.content}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {moodView === "history" && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-50">
+                      <h4 className="font-semibold text-gray-700 text-sm">{"\u5fc3\u60c5\u5386\u53f2"}</h4>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {moods.slice(0,20).length === 0 ? (
+                        <div className="px-5 py-8 text-center text-gray-300">
+                          <Icon name="smile" size={30} className="mx-auto mb-2 opacity-30"/>
+                          <p className="text-sm">{"\u6682\u65e0\u5fc3\u60c5\u8bb0\u5f55"}</p>
+                        </div>
+                      ) : moods.slice(0,20).map((x,i) => (
+                        <div key={i} className="flex items-center gap-3 px-5 py-3">
+                          <span className="text-2xl">{x.mood}</span>
+                          <div className="flex-1">
+                            <span className="text-sm text-gray-600">{x.label}</span>
+                            {x.content && <p className="text-xs text-gray-400 mt-0.5">{x.content}</p>}
+                          </div>
+                          <span className="text-xs text-gray-300">{x.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            
+            )}
+
+            {/* ──────── MEALS PAGE ──────── */}
+            {page === "meals" && (
+
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <CrewBadge name="sanji" size={36}/>
+                    <div>
+                    <h2 className="text-2xl font-bold text-gray-800">{"\u996e\u98df\u8bb0\u5f55"}</h2>
+                    <p className="text-sm text-gray-400 mt-1">{"\u8bb0\u5f55\u6bcf\u65e5\u4e09\u9910\uff0c\u5173\u6ce8\u5065\u5eb7\u996e\u98df"}</p>
+                    </div>
+                  </div>
+                  <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-100">
+                    <button onClick={()=>setMealView("today")}
+                      className={"px-5 py-2 rounded-lg text-sm font-medium transition-all "+(mealView==="today"?"bg-indigo-500 text-white shadow":"text-gray-500")}>
+                      {"\u4eca\u65e5"}
+                    </button>
+                    <button onClick={()=>setMealView("history")}
+                      className={"px-5 py-2 rounded-lg text-sm font-medium transition-all "+(mealView==="history"?"bg-indigo-500 text-white shadow":"text-gray-500")}>
+                      {"\u5386\u53f2"}
+                    </button>
+                  </div>
+                </div>
+
+                {mealView === "today" && (
+                  <div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+                      <div className="flex gap-2 mb-4">
+                        {[{k:"breakfast",l:"\u65e9\u9910"},{k:"lunch",l:"\u5348\u9910"},{k:"dinner",l:"\u665a\u9910"}].map(t => (
+                          <button key={t.k} onClick={()=>setMealType(t.k)}
+                            className={"px-4 py-2 rounded-lg text-sm transition-all "+(mealType===t.k?"bg-blue-500 text-white shadow":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                            {t.l}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input value={mealContent} onChange={e=>setMealContent(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMeal()}
+                          placeholder={"\u4eca\u5929\u5403\u4e86\u4ec0\u4e48\uff1f"}
+                          className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                        <button onClick={addMeal}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                          <Icon name="plus" size={14}/>{"\u6dfb\u52a0"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-gray-50">
+                        <h4 className="font-semibold text-gray-700 text-sm">{"\u4eca\u65e5\u996e\u98df\u8bb0\u5f55"}</h4>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {todayMeals.filter(x=>x.meal===mealType).length === 0 ? (
+                          <div className="px-5 py-8 text-center text-gray-300">
+                            <Icon name="coffee" size={30} className="mx-auto mb-2 opacity-30"/>
+                            <p className="text-sm">{"\u6682\u65e0\u8bb0\u5f55"}</p>
+                          </div>
+                        ) : todayMeals.filter(x=>x.meal===mealType).map(x => (
+                          <div key={x.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors group">
+                            <span className="text-sm text-gray-600 flex-1">{x.content}</span>
+                            <button onClick={()=>removeMeal(x.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                              <Icon name="trash" size={14}/>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {mealView === "history" && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-50">
+                      <h4 className="font-semibold text-gray-700 text-sm">{"\u5386\u53f2\u996e\u98df\u8bb0\u5f55"}</h4>
+                    </div>
+                    {(() => {
+                      const mealLabels = {breakfast:"\u65e9\u9910",lunch:"\u5348\u9910",dinner:"\u665a\u9910"};
+                      const historyMeals = meals.slice();
+                      const grouped = {};
+                      historyMeals.forEach(x => { if (!grouped[x.date]) grouped[x.date] = []; grouped[x.date].push(x); });
+                      const dates = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
+                      if (dates.length === 0) return (
+                        <div className="px-5 py-10 text-center text-gray-300">
+                          <Icon name="coffee" size={36} className="mx-auto mb-3 opacity-30"/>
+                          <p className="text-sm">{"\u6682\u65e0\u5386\u53f2\u8bb0\u5f55"}</p>
+                        </div>
+                      );
+                      return (
+                        <div className="divide-y divide-gray-50">
+                          {dates.map(date => (
+                            <div key={date} className="px-5 py-4">
+                              <p className="text-xs text-gray-400 mb-2 font-medium">{date}</p>
+                              <div className="space-y-1.5">
+                                {grouped[date].map(x => (
+                                  <div key={x.id} className="flex items-center gap-2 text-sm group">
+                                    <span className={"text-xs px-2 py-0.5 rounded-full flex-shrink-0 "+(x.meal==="breakfast"?"bg-amber-50 text-amber-500":x.meal==="lunch"?"bg-blue-50 text-blue-500":"bg-purple-50 text-purple-500")}>
+                                      {mealLabels[x.meal] || x.meal}
+                                    </span>
+                                    <span className="text-gray-600 flex-1">{x.content}</span>
+                                    <button onClick={()=>removeMeal(x.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                                      <Icon name="trash" size={14}/>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            
+            )}
+
+            {/* ──────── FINANCE PAGE ──────── */}
+            {page === "finance" && (
+
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                    <CrewBadge name="nami" size={36}/>
+                    <div>
+                  <h2 className="text-2xl font-bold text-gray-800">{"\u8bb0\u8d26"}</h2>
+                  <p className="text-sm text-gray-400 mt-1">{"\u6536\u652f\u8bb0\u5f55\uff0c\u638c\u63e1\u8d22\u52a1\u72b6\u51b5"}</p>
+                    </div>
+                </div>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+                    <p className="text-xs text-gray-400 mb-1">{"\u4eca\u65e5\u652f\u51fa"}</p>
+                    <p className="text-xl font-bold text-red-500">{"\u00a5"}{todayExpenses.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+                    <p className="text-xs text-gray-400 mb-1">{"\u672c\u6708\u6536\u5165"}</p>
+                    <p className="text-xl font-bold text-emerald-500">{"\u00a5"}{monthIncome.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 text-center">
+                    <p className="text-xs text-gray-400 mb-1">{"\u672c\u6708\u7ed3\u4f59"}</p>
+                    <p className={"text-xl font-bold "+(monthBalance>=0?"text-emerald-500":"text-red-500")}>{"\u00a5"}{monthBalance.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Add finance */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+                  <div className="flex gap-2 mb-4">
+                    <button onClick={()=>setFinType("expense")}
+                      className={"px-4 py-2 rounded-lg text-sm transition-all "+(finType==="expense"?"bg-red-500 text-white shadow":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                      {"\u652f\u51fa"}
+                    </button>
+                    <button onClick={()=>setFinType("income")}
+                      className={"px-4 py-2 rounded-lg text-sm transition-all "+(finType==="income"?"bg-emerald-500 text-white shadow":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                      {"\u6536\u5165"}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {(finType==="expense"?expenseCategories:incomeCategories).map(c => (
+                      <button key={c} onClick={()=>setFinCategory(c)}
+                        className={"px-3 py-1.5 rounded-lg text-xs transition-all "+(finCategory===c?"bg-indigo-500 text-white shadow":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                        {c}
+                      </button>
+                    ))}
+                    <div className="flex gap-1">
+                      <input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder={"\u65b0\u5206\u7c7b"}
+                        className="px-2 py-1.5 rounded-lg border border-gray-200 text-xs bg-white" style={{width:"4.5rem"}}/>
+                      <button onClick={finType==="expense"?addExpenseCategory:addIncomeCategory}
+                        className="px-2 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs hover:bg-gray-300 transition-colors">
+                        <Icon name="plus" size={12}/>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="date" value={finDate} onChange={e=>setFinDate(e.target.value)}
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"9rem"}}/>
+                    <input type="number" value={finAmount} onChange={e=>setFinAmount(e.target.value)}
+                      placeholder={"\u91d1\u989d"} className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"6rem"}}/>
+                    <input value={finNote} onChange={e=>setFinNote(e.target.value)}
+                      placeholder={"\u5907\u6ce8(\u53ef\u9009)"} className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                    <button onClick={addFinance}
+                      className="px-4 py-2 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-1 flex-shrink-0">
+                      <Icon name="plus" size={14}/>{"\u6dfb\u52a0"}
+                    </button>
+                  </div>
+                </div>
+                {/* Recent records */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-50">
+                    <h4 className="font-semibold text-gray-700 text-sm">{"\u6700\u8fd1\u8bb0\u5f55"}</h4>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {finances.slice().reverse().slice(0,20).length === 0 ? (
+                      <div className="px-5 py-8 text-center text-gray-300">
+                        <Icon name="dollar" size={30} className="mx-auto mb-2 opacity-30"/>
+                        <p className="text-sm">{"\u6682\u65e0\u8bb0\u8d26\u8bb0\u5f55"}</p>
+                      </div>
+                    ) : finances.slice().reverse().slice(0,20).map(x => (
+                      <div key={x.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors group">
+                        <span className={"text-xs px-2 py-0.5 rounded-full flex-shrink-0 "+(x.type==="expense"?"bg-red-50 text-red-500":"bg-emerald-50 text-emerald-500")}>
+                          {x.type==="expense"?"\u652f\u51fa":"\u6536\u5165"}
+                        </span>
+                        <span className="text-sm text-gray-600 flex-1">{x.category}{x.note?" - "+x.note:""}</span>
+                        <span className={"text-sm font-medium "+(x.type==="expense"?"text-red-500":"text-emerald-500")}>
+                          {x.type==="expense"?"-":"+"}{"\u00a5"}{x.amount.toFixed(2)}
+                        </span>
+                        <span className="text-xs text-gray-300">{x.date}</span>
+                        <button onClick={()=>removeFinance(x.id)} className="text-gray-200 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                          <Icon name="trash" size={14}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Charts */}
+                {(() => {
+                  const CHART_COLORS = ["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec4899","#84cc16","#f97316","#14b8a6"];
+                  const curMonthExp = finances.filter(x => x.date >= monthStart && x.type === "expense");
+                  const curMonthInc = finances.filter(x => x.date >= monthStart && x.type === "income");
+                  const expByCat = {};
+                  curMonthExp.forEach(x => { expByCat[x.category] = (expByCat[x.category]||0) + x.amount; });
+                  const incByCat = {};
+                  curMonthInc.forEach(x => { incByCat[x.category] = (incByCat[x.category]||0) + x.amount; });
+                  const expEntries = Object.entries(expByCat).sort((a,b) => b[1]-a[1]);
+                  const incEntries = Object.entries(incByCat).sort((a,b) => b[1]-a[1]);
+                  const totalExp = expEntries.reduce((a,e) => a+e[1], 0);
+                  const totalInc = incEntries.reduce((a,e) => a+e[1], 0);
+                  const renderPie = (entries, total, emptyText) => {
+                    if (entries.length === 0 || total === 0) return (
+                      <div className="py-8 text-center text-gray-300">
+                        <Icon name="chartBar" size={30} className="mx-auto mb-2 opacity-30"/>
+                        <p className="text-xs">{emptyText}</p>
+                      </div>
+                    );
+                    let cumAngle = 0;
+                    const r = 42, cx = 50, cy = 50;
+                    const toRad = (deg) => (deg - 90) * Math.PI / 180;
+                    const slices = entries.map((e, i) => {
+                      const angle = (e[1] / total) * 360;
+                      const sa = cumAngle; cumAngle += angle;
+                      const x1 = cx + r * Math.cos(toRad(sa)), y1 = cy + r * Math.sin(toRad(sa));
+                      const x2 = cx + r * Math.cos(toRad(cumAngle)), y2 = cy + r * Math.sin(toRad(cumAngle));
+                      const path = "M "+cx+" "+cy+" L "+x1+" "+y1+" A "+r+" "+r+" 0 "+(angle>180?1:0)+" 1 "+x2+" "+y2+" Z";
+                      return { path, color: CHART_COLORS[i % CHART_COLORS.length], name: e[0], amount: e[1], pct: Math.round((e[1]/total)*100) };
+                    });
+                    return (
+                      <div className="flex items-center gap-4">
+                        <svg viewBox="0 0 100 100" style={{width:110, height:110, flexShrink:0}}>
+                          {slices.map((s, i) => (<path key={i} d={s.path} fill={s.color} opacity="0.85"/>))}
+                          <circle cx={cx} cy={cy} r="22" fill="white"/>
+                          <text x={cx} y={cy-2} textAnchor="middle" fontSize="7" fill="#666" fontWeight="600">{"\u00a5"+total.toFixed(0)}</text>
+                          <text x={cx} y={cy+7} textAnchor="middle" fontSize="5" fill="#999">{"\u672c\u6708"}</text>
+                        </svg>
+                        <div className="space-y-1 flex-1" style={{minWidth:0}}>
+                          {slices.map((s, i) => (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{background:s.color}}/>
+                              <span className="text-xs text-gray-600 truncate flex-1">{s.name}</span>
+                              <span className="text-xs text-gray-400 flex-shrink-0">{s.pct}%</span>
+                              <span className="text-xs font-medium text-gray-500 flex-shrink-0" style={{minWidth:"3rem",textAlign:"right"}}>{"\u00a5"+s.amount.toFixed(0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  };
+                  // Monthly expense by category for stacked bar chart
+                  const monthCatData = {};
+                  const allCats = new Set();
+                  finances.filter(x => x.type === "expense").forEach(x => {
+                    const ym = x.date.slice(0, 7);
+                    if (!monthCatData[ym]) monthCatData[ym] = {};
+                    monthCatData[ym][x.category] = (monthCatData[ym][x.category]||0) + x.amount;
+                    allCats.add(x.category);
+                  });
+                  const months = Object.keys(monthCatData).sort();
+                  const catList = [...allCats];
+                  const monthTotals = months.map(ym => catList.reduce((s,c) => s + (monthCatData[ym][c]||0), 0));
+                  const maxMonth = monthTotals.length > 0 ? Math.max(...monthTotals) : 1;
+                  return (
+                    <div className="space-y-4 mt-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                          <h4 className="font-semibold text-gray-700 text-sm mb-4 flex items-center gap-2">
+                            <Icon name="chartBar" size={14} className="text-red-400"/>{"\u672c\u6708\u652f\u51fa\u5206\u5e03"}
+                          </h4>
+                          {renderPie(expEntries, totalExp, "\u672c\u6708\u6682\u65e0\u652f\u51fa")}
+                        </div>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                          <h4 className="font-semibold text-gray-700 text-sm mb-4 flex items-center gap-2">
+                            <Icon name="chartBar" size={14} className="text-emerald-400"/>{"\u672c\u6708\u6536\u5165\u5206\u5e03"}
+                          </h4>
+                          {renderPie(incEntries, totalInc, "\u672c\u6708\u6682\u65e0\u6536\u5165")}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                        <h4 className="font-semibold text-gray-700 text-sm mb-4 flex items-center gap-2">
+                          <Icon name="chartBar" size={14} className="text-indigo-400"/>{"\u652f\u51fa\u540c\u671f\u5bf9\u6bd4"}
+                        </h4>
+                        {months.length === 0 ? (
+                          <div className="py-6 text-center text-gray-300">
+                            <p className="text-xs">{"\u6682\u65e0\u652f\u51fa\u6570\u636e"}</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <svg viewBox={"0 0 " + Math.max(months.length * 90, 360) + " 180"} className="w-full" style={{maxHeight:200}}>
+                              {months.map((ym, i) => {
+                                const svgW = Math.max(months.length * 90, 360);
+                                const barW = Math.max(Math.min(50, (svgW - 60) / months.length - 12), 20);
+                                const gap = (svgW - 60) / months.length;
+                                const x = 40 + i * gap;
+                                const total = monthTotals[i];
+                                const totalH = (total / maxMonth) * 110;
+                                const isCurMonth = ym === today.slice(0, 7);
+                                let cumH = 0;
+                                return (
+                                  <g key={i}>
+                                    {catList.map((cat, ci) => {
+                                      const val = monthCatData[ym][cat] || 0;
+                                      if (val === 0) return null;
+                                      const segH = (val / maxMonth) * 110;
+                                      const y = 140 - cumH - segH;
+                                      cumH += segH;
+                                      return (
+                                        <rect key={ci} x={x} y={y} width={barW} height={segH}
+                                          rx={cumH === segH ? "4" : "0"} fill={CHART_COLORS[ci % CHART_COLORS.length]} opacity={isCurMonth ? "0.85" : "0.5"}/>
+                                      );
+                                    })}
+                                    <text x={x + barW/2} y={135 - totalH} textAnchor="middle" fontSize="9" fill="#666">{"\u00a5" + total.toFixed(0)}</text>
+                                    <text x={x + barW/2} y="160" textAnchor="middle" fontSize="8" fill={isCurMonth ? "#6366f1" : "#999"} fontWeight={isCurMonth ? "600" : "400"}>{ym}</text>
+                                  </g>
+                                );
+                              })}
+                              <line x1="30" y1="142" x2={Math.max(months.length * 90, 360) - 10} y2="142" stroke="#e5e7eb" strokeWidth="1"/>
+                            </svg>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 pt-3 border-t border-gray-50">
+                              {catList.map((cat, ci) => (
+                                <div key={ci} className="flex items-center gap-1.5">
+                                  <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{background:CHART_COLORS[ci % CHART_COLORS.length]}}/>
+                                  <span className="text-xs text-gray-500">{cat}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            
+            )}
+
+            {/* ──────── NOTES PAGE ──────── */}
+            {page === "notes" && (
+
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                    <CrewBadge name="robin" size={36}/>
+                    <div>
+                  <h2 className="text-2xl font-bold text-gray-800">{"\u8bfb\u4e66\u7b14\u8bb0"}</h2>
+                  <p className="text-sm text-gray-400 mt-1">{"\u8bb0\u5f55\u8bfb\u4e66\u7b14\u8bb0\u4e0e\u7075\u611f\u60f3\u6cd5"}</p>
+                    </div>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+                  <div className="flex gap-2 mb-4">
+                    <button onClick={()=>setNoteType("reading")}
+                      className={"px-4 py-2 rounded-lg text-sm transition-all "+(noteType==="reading"?"bg-indigo-500 text-white shadow":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                      {"\u8bfb\u4e66\u7b14\u8bb0"}
+                    </button>
+                    <button onClick={()=>setNoteType("idea")}
+                      className={"px-4 py-2 rounded-lg text-sm transition-all "+(noteType==="idea"?"bg-indigo-500 text-white shadow":"bg-gray-100 text-gray-600 hover:bg-gray-200")}>
+                      {"\u7075\u611f\u60f3\u6cd5"}
+                    </button>
+                  </div>
+                  <div className="flex gap-2 mb-3">
+                    <input type="date" value={noteDate} onChange={e=>setNoteDate(e.target.value)}
+                      className="px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white" style={{width:"9rem"}}/>
+                  </div>
+                  <input value={noteTitle} onChange={e=>setNoteTitle(e.target.value)}
+                    placeholder={"\u6807\u9898"}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm mb-3 bg-white"/>
+                  <textarea value={noteBody} onChange={e=>setNoteBody(e.target.value)}
+                    placeholder={"\u5185\u5bb9\u2026\u2026"}
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none mb-4" rows="5"/>
+                  <div className="flex gap-2">
+                    <button onClick={saveNote}
+                      className="px-5 py-2.5 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 transition-colors flex items-center gap-2 font-medium">
+                      <Icon name="save" size={14}/>{editNoteId?"\u66f4\u65b0":"\u4fdd\u5b58"}
+                    </button>
+                    {editNoteId && (
+                      <button onClick={()=>{setEditNoteId(null);setNoteTitle("");setNoteBody("");setNoteDate(today);}}
+                        className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+                        {"\u53d6\u6d88\u7f16\u8f91"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+                    <h4 className="font-semibold text-gray-700 text-sm flex items-center gap-2">
+                      {"\u7b14\u8bb0\u5217\u8868"}
+                      {noteFilterDate && <span className="text-xs bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full">{noteFilterDate}</span>}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <input type="date" value={noteFilterDate} onChange={e=>setNoteFilterDate(e.target.value)}
+                        className="px-2 py-1 rounded-lg border border-gray-200 text-xs bg-white"/>
+                      {noteFilterDate && (
+                        <button onClick={()=>setNoteFilterDate("")}
+                          className="text-xs text-gray-400 hover:text-red-400 transition-colors px-2 py-1 rounded hover:bg-gray-100">
+                          {"\u6e05\u9664"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {filteredNotes.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-gray-300">
+                        <Icon name="edit" size={30} className="mx-auto mb-2 opacity-30"/>
+                        <p className="text-sm">{noteFilterDate ? "\u8be5\u65e5\u671f\u6682\u65e0\u7b14\u8bb0" : "\u6682\u65e0\u7b14\u8bb0"}</p>
+                      </div>
+                    ) : filteredNotes.map(n => (
+                      <div key={n.id} className="px-5 py-4 hover:bg-gray-50 transition-colors group">
+                        <div className="flex items-start justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className={"text-xs px-2 py-0.5 rounded-full "+(n.type==="reading"?"bg-indigo-50 text-indigo-500":"bg-amber-50 text-amber-500")}>
+                              {n.type==="reading"?"\u8bfb\u4e66":"\u7075\u611f"}
+                            </span>
+                            <h5 className="text-sm font-medium text-gray-700">{n.title}</h5>
+                          </div>
+                          <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={()=>editNote(n)} className="text-gray-300 hover:text-indigo-500 transition-colors">
+                              <Icon name="edit" size={14}/>
+                            </button>
+                            <button onClick={()=>removeNote(n.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                              <Icon name="trash" size={14}/>
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400 line-clamp-2">{n.body}</p>
+                        <p className="text-xs text-gray-300 mt-1">{n.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            )}
+
+                  {/* Footer */}
+                  <div className="mt-8 pt-4 border-t border-gray-100 text-center">
+                    <p className="text-xs text-gray-300">{"\u6d77\u8d3c\u5de5\u4f5c\u53f0 \u00b7 \u6570\u636e\u81ea\u52a8\u4fdd\u5b58\u4e8e\u672c\u5730\u6d4f\u89c8\u5668 \u00b7 \u652f\u6301\u5bfc\u51faJSON\u5907\u4efd"}</p>
+                  </div>
+          </main>
+
+          {/* ═══════ Right Sidebar (schedule/habits only) ═══════ */}
+          {(page === "schedule" || page === "habits") && (
+            <aside className="w-64 flex-shrink-0 border-l bg-white overflow-y-auto" style={{padding:"2rem 1.25rem", borderColor:"rgba(44,62,80,0.1)"}}>
+              <h3 className="font-bold text-sm mb-5 flex items-center gap-2" style={{color:"var(--op-deep-blue)"}}>
+                <Icon name="chartBar" size={15} style={{color:"var(--op-pirate-red)"}}/>{"\u4eca\u65e5\u6982\u89c8"}
+              </h3>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="op-card p-3 text-center">
+                  <p className="text-lg font-bold" style={{color:"var(--op-deep-blue)"}}>{doneC}</p>
+                  <p className="text-xs text-gray-400">{"\u5df2\u5b8c\u6210"}</p>
+                </div>
+                <div className="op-card p-3 text-center">
+                  <p className="text-lg font-bold" style={{color:"var(--op-pirate-red)"}}>{todayTodos.length - doneC}</p>
+                  <p className="text-xs text-gray-400">{"\u672a\u5b8c\u6210"}</p>
+                </div>
+                <div className="op-card p-3 text-center">
+                  <p className="text-lg font-bold text-emerald-500">{todayTodos.length > 0 ? Math.round((doneC/todayTodos.length)*100) : 0}%</p>
+                  <p className="text-xs text-gray-400">{"\u5b8c\u6210\u7387"}</p>
+                </div>
+                <div className="op-card p-3 text-center">
+                  <p className="text-lg font-bold text-indigo-500">{todayMins}</p>
+                  <p className="text-xs text-gray-400">{"\u5206\u949f\u4e13\u6ce8"}</p>
+                </div>
+              </div>
+              {habits.length > 0 && (
+                <div className="mb-6">
+                  <p className="text-xs font-medium text-gray-400 mb-3">{"\u4e60\u60ef\u8fdb\u5ea6"}</p>
+                  {habits.map(h => {
+                    const done = (habitCheckins[todayStr()] || []).includes(h.id);
+                    return (
+                      <div key={h.id} className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{background: h.color}}/>
+                        <span className={"flex-1 text-xs " + (done ? "line-through text-gray-300" : "text-gray-600")}>{h.name.length > 8 ? h.name.slice(0,8) + ".." : h.name}</span>
+                        <span className={"text-xs " + (done ? "text-emerald-500" : "text-gray-300")}>{done ? "\u2713" : "\u2717"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="op-card p-3 text-center">
+                <p className="text-xs text-gray-400 mb-1">{"\u4eca\u65e5\u4e13\u6ce8"}</p>
+                <p className="text-2xl font-bold" style={{color:"var(--op-deep-blue)"}}>{todayMins}</p>
+                <p className="text-xs text-gray-400">{"\u5206\u949f"}</p>
+              </div>
+            </aside>
+          )}
+
+          {/* ═══════ AI Chat Floating Panel ═══════ */}
+          <div className="fixed" style={{bottom:24,right:24,zIndex:100}}>
+            {aiOpen && (
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col mb-3" style={{width:380,height:500}}>
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between rounded-t-2xl" style={{background:"linear-gradient(135deg,#10b981,#059669)"}}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{"\ud83e\udd16"}</span>
+                    <span className="text-sm font-semibold text-white">{"AI\u52a9\u624b"}</span>
+                  </div>
+                  <button onClick={()=>setAiOpen(false)} className="text-white opacity-70 hover:opacity-100 transition-opacity text-lg">{"\u2715"}</button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{background:"#f9fafb"}}>
+                  {aiMessages.map((msg,i) => (
+                    <div key={i} className={"flex "+(msg.role==="user"?"justify-end":"justify-start")}>
+                      <div className={"max-w-xs px-3 py-2 rounded-xl text-sm whitespace-pre-line "+(msg.role==="user"?"bg-indigo-500 text-white rounded-br-sm":"bg-white text-gray-700 shadow-sm border border-gray-100 rounded-bl-sm")}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-3 py-3 border-t border-gray-100 bg-white rounded-b-2xl">
+                  <div className="flex gap-2">
+                    <input value={aiInput} onChange={e=>setAiInput(e.target.value)}
+                      onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendAiMessage();}}}
+                      placeholder={"\u8f93\u5165\u6d88\u606f\u2026"}
+                      className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white"/>
+                    <button onClick={sendAiMessage}
+                      className="px-3 py-2 rounded-lg text-white text-sm transition-colors flex-shrink-0" style={{background:"#10b981"}}>
+                      {"\u53d1\u9001"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <button onClick={()=>setAiOpen(!aiOpen)}
+              className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl transition-transform hover:scale-110"
+              style={{background:"linear-gradient(135deg,#10b981,#059669)",marginLeft:"auto",display:"block"}}>
+              {"\ud83d\udcac"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* ═══════════════════ Mount ═══════════════════ */
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App/>);
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("./sw.js").catch(function(){});
+      });
+    }
+  </script>
+</body>
+</html>
