@@ -423,15 +423,23 @@
         }
       };
 
+      const [cloudReady, setCloudReady] = useState(false);
+
       const loadFromCloud = async (user) => {
         if (!_supabase || !user) return;
+        let hasCloudData = false;
         try {
-          const {data, error} = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", user.id).single();
+          const {data, error} = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", user.id).maybeSingle();
           if (data && data.data) {
             applyCloudData(data.data);
-            initialLoadDone.current = true;
+            hasCloudData = true;
           }
         } catch(e) {}
+        initialLoadDone.current = true;
+        setCloudReady(true);
+        if (!hasCloudData) {
+          setTimeout(syncToCloud, 500);
+        }
       };
 
       const handleSupaLogin = async () => {
@@ -487,7 +495,7 @@
         if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
         syncTimerRef.current = setTimeout(syncToCloud, 1500);
         return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
-      }, [todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes,supaUser]);
+      }, [todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes,supaUser,cloudReady]);
 
       // ── Todo handlers ──
       const toggleTodo = (id) => setTodos(ts => ts.map(t => t.id===id ? {...t,done:!t.done} : t));
