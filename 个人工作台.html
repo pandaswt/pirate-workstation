@@ -14,6 +14,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -183,6 +184,9 @@
     const fmtWeek = (ws) => { const [y,w] = ws.split("-W"); return y + "年 第" + w + "周"; };
     const CN_MONTHS = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
     const LS_KEY = "personal_workstation_v1";
+    const SB_URL = "https://qnihnjujlsvxfapaphvc.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFuaWhuanVqbHN2eGZhcGFwaHZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMDY0ODksImV4cCI6MjEwMDg4MjQ4OX0.E_12IQGliOqlbk_-qo2Ak0PurOYWWIuiCqFaoE1fcL8";
+    const _supabase = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 
     const SAMPLE_HABITS = [
       { id:"h1", name:"晨读30分钟", color:"#6366f1" },
@@ -321,6 +325,15 @@
       const [aiInput, setAiInput] = useState("");
       const [aiMessages, setAiMessages] = useState([{role:"ai", text:"\u4f60\u597d\uff01\u6211\u662f\u4f60\u7684AI\u52a9\u624b\uff0c\u53ef\u4ee5\u5e2e\u4f60\u5feb\u901f\u8bb0\u5f55\u3002\u8bd5\u8bd5\u8bf4\uff1a\u201c\u5348\u996d\u82b1\u4e8625\u201d\u3001\u201c\u8dd1\u6b6530\u5206\u949f\u201d\u3001\u201c\u6dfb\u52a0\u5f85\u529e\uff1a\u63d0\u4ea4\u5468\u62a5\u201d"}]);
 
+      // ── Supabase Auth state ──
+      const [supaUser, setSupaUser] = useState(null);
+      const [supaAuthMode, setSupaAuthMode] = useState("login");
+      const [supaEmail, setSupaEmail] = useState("");
+      const [supaPassword, setSupaPassword] = useState("");
+      const [supaAuthLoading, setSupaAuthLoading] = useState(false);
+      const [supaAuthError, setSupaAuthError] = useState("");
+      const [cloudSyncStatus, setCloudSyncStatus] = useState("idle");
+
       // ── Persistence ──
       useEffect(() => {
         try {
@@ -352,6 +365,113 @@
       useEffect(() => {
         try { localStorage.setItem(LS_KEY, JSON.stringify({todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes})); } catch(e) {}
       }, [todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes]);
+
+      // ── Supabase Auth + Cloud Sync ──
+      const syncTimerRef = useRef(null);
+      const initialLoadDone = useRef(false);
+
+      const getAllData = () => ({todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes});
+
+      const applyCloudData = (d) => {
+        if (!d) return;
+        if (d.todos) setTodos(d.todos);
+        if (d.checkins) setCheckins(d.checkins);
+        if (d.dailys) setDailys(d.dailys);
+        if (d.weeklys) setWeeklys(d.weeklys);
+        if (d.habits) setHabits(d.habits);
+        if (d.habitCheckins) setHabitCheckins(d.habitCheckins);
+        if (d.pomoSessions) setPomoSessions(d.pomoSessions);
+        if (d.exercises) setExercises(d.exercises);
+        if (d.moods) setMoods(d.moods);
+        if (d.meals) setMeals(d.meals);
+        if (d.finances) setFinances(d.finances);
+        if (d.notes) setNotes(d.notes);
+        if (d.expenseCategories) setExpenseCategories(d.expenseCategories);
+        if (d.incomeCategories) setIncomeCategories(d.incomeCategories);
+        if (d.navOrder) {
+          var DC = {dashboard:"luffy",schedule:"law",habits:"zoro",exercise:"usopp",mood:"chopper",meals:"sanji",finance:"nami",notes:"robin",daily:"ace",weekly:"brook"};
+          setNavOrder(d.navOrder.map(function(item){return Object.assign({},item,{crew:DC[item.key]||item.crew});}));
+        }
+        if (d.customExTypes) setCustomExTypes(d.customExTypes);
+      };
+
+      const syncToCloud = async () => {
+        if (!_supabase || !supaUser) return;
+        setCloudSyncStatus("syncing");
+        try {
+          await _supabase.from("workstation_data").upsert({user_id: supaUser.id, data: getAllData(), updated_at: new Date().toISOString()});
+          setCloudSyncStatus("synced");
+          setTimeout(() => setCloudSyncStatus("idle"), 2000);
+        } catch(e) {
+          setCloudSyncStatus("error");
+        }
+      };
+
+      const loadFromCloud = async (user) => {
+        if (!_supabase || !user) return;
+        try {
+          const {data, error} = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", user.id).single();
+          if (data && data.data) {
+            applyCloudData(data.data);
+            initialLoadDone.current = true;
+          }
+        } catch(e) {}
+      };
+
+      const handleSupaLogin = async () => {
+        if (!_supabase || !supaEmail || !supaPassword) return;
+        setSupaAuthLoading(true); setSupaAuthError("");
+        try {
+          const {data, error} = await _supabase.auth.signInWithPassword({email: supaEmail, password: supaPassword});
+          if (error) setSupaAuthError(error.message);
+          else { setSupaUser(data.user); setSupaEmail(""); setSupaPassword(""); }
+        } catch(e) { setSupaAuthError(e.message || "\u767b\u5f55\u5931\u8d25"); }
+        setSupaAuthLoading(false);
+      };
+
+      const handleSupaSignup = async () => {
+        if (!_supabase || !supaEmail || !supaPassword) return;
+        setSupaAuthLoading(true); setSupaAuthError("");
+        try {
+          const {data, error} = await _supabase.auth.signUp({email: supaEmail, password: supaPassword});
+          if (error) setSupaAuthError(error.message);
+          else { setSupaUser(data.user); setSupaEmail(""); setSupaPassword(""); }
+        } catch(e) { setSupaAuthError(e.message || "\u6ce8\u518c\u5931\u8d25"); }
+        setSupaAuthLoading(false);
+      };
+
+      const handleSupaLogout = async () => {
+        if (_supabase) await _supabase.auth.signOut();
+        setSupaUser(null);
+      };
+
+      // Check session on mount
+      useEffect(() => {
+        if (!_supabase) return;
+        _supabase.auth.getSession().then(({data: {session}}) => {
+          if (session?.user) setSupaUser(session.user);
+        });
+        const {data: {subscription}} = _supabase.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) setSupaUser(session.user);
+          else setSupaUser(null);
+        });
+        return () => subscription.unsubscribe();
+      }, []);
+
+      // Load cloud data when user logs in
+      useEffect(() => {
+        if (supaUser && !initialLoadDone.current) {
+          loadFromCloud(supaUser);
+        }
+      }, [supaUser]);
+
+      // Debounced cloud sync on data change
+      useEffect(() => {
+        if (!supaUser || !initialLoadDone.current) return;
+        if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = setTimeout(syncToCloud, 1500);
+        return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
+      }, [todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes,supaUser]);
 
       // ── Todo handlers ──
       const toggleTodo = (id) => setTodos(ts => ts.map(t => t.id===id ? {...t,done:!t.done} : t));
@@ -862,6 +982,42 @@
 
       return (
         <div className="h-screen flex" style={{background:"var(--op-cream)"}}>
+          {/* Supabase Auth Modal */}
+          {_supabase && !supaUser && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center" style={{background:"rgba(27,40,56,0.85)",backdropFilter:"blur(6px)"}}>
+              <div className="op-card p-8 w-full max-w-sm mx-4" style={{background:"#fff",border:"3px solid #2C3E50"}}>
+                <div className="text-center mb-6">
+                  <div className="text-3xl mb-2">{"\u2693"}</div>
+                  <h2 style={{color:"var(--op-deep-blue)",fontWeight:800,fontSize:"1.3rem"}}>{"\u767b\u5f55\u822a\u6d77\u5de5\u4f5c\u53f0"}</h2>
+                  <p style={{color:"#8B7355",fontSize:"0.85rem",marginTop:4}}>{"\u767b\u5f55\u540e\u6570\u636e\u81ea\u52a8\u540c\u6b65\u5230\u4e91\u7aef"}</p>
+                </div>
+                <div className="space-y-3">
+                  <input type="email" value={supaEmail} onChange={e=>setSupaEmail(e.target.value)}
+                    placeholder={"\u90ae\u7bb1"}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+                    style={{background:"#FAFAFA"}}/>
+                  <input type="password" value={supaPassword} onChange={e=>setSupaPassword(e.target.value)}
+                    placeholder={"\u5bc6\u7801"}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm"
+                    style={{background:"#FAFAFA"}}
+                    onKeyDown={e=>{if(e.key==="Enter") supaAuthMode==="login" ? handleSupaLogin() : handleSupaSignup();}}/>
+                  {supaAuthError && <p style={{color:"#C0392B",fontSize:"0.8rem"}}>{supaAuthError}</p>}
+                  <button onClick={supaAuthMode==="login" ? handleSupaLogin : handleSupaSignup}
+                    disabled={supaAuthLoading}
+                    className="w-full py-2.5 rounded-lg text-white font-semibold text-sm transition-colors"
+                    style={{background: supaAuthLoading ? "#95a5a6" : "var(--op-pirate-red)"}}>
+                    {supaAuthLoading ? "\u5904\u7406\u4e2d..." : (supaAuthMode==="login" ? "\u767b \u5f55" : "\u6ce8 \u518c")}
+                  </button>
+                  <div className="text-center">
+                    <button onClick={()=>{setSupaAuthMode(supaAuthMode==="login"?"signup":"login"); setSupaAuthError("");}}
+                      className="text-xs underline" style={{color:"var(--op-deep-blue)"}}>
+                      {supaAuthMode==="login" ? "\u6ca1\u6709\u8d26\u53f7\uff1f\u70b9\u51fb\u6ce8\u518c" : "\u5df2\u6709\u8d26\u53f7\uff1f\u70b9\u51fb\u767b\u5f55"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Toast */}
           {toast && (
             <div className="fixed top-6 left-1/2 z-50" style={{transform:"translateX(-50%)"}}>
@@ -914,6 +1070,21 @@
               ))}
             </nav>
             <div className="p-4" style={{borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+              {/* Cloud sync status */}
+              {supaUser && (
+                <div className="flex items-center gap-2 mb-3 px-1">
+                  <div style={{width:8,height:8,borderRadius:"50%",flexShrink:0,
+                    background: cloudSyncStatus==="syncing" ? "#F39C12" : cloudSyncStatus==="synced" ? "#27AE60" : cloudSyncStatus==="error" ? "#E74C3C" : "#5D6D7E"}}/>
+                  <span style={{fontSize:"0.7rem",color:"rgba(255,255,255,0.5)",flex:1}}>
+                    {cloudSyncStatus==="syncing" ? "\u540c\u6b65\u4e2d..." : cloudSyncStatus==="synced" ? "\u5df2\u540c\u6b65" : cloudSyncStatus==="error" ? "\u540c\u6b65\u5931\u8d25" : "\u4e91\u7aef\u5df2\u8fde\u63a5"}
+                  </span>
+                  <button onClick={handleSupaLogout} style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}}
+                    onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
+                    onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.4)"}>
+                    {"\u767b\u51fa"}
+                  </button>
+                </div>
+              )}
               <button onClick={exportData} className="w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 justify-center mb-2" style={{background:"rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.7)",border:"1px solid rgba(255,255,255,0.15)"}}
                 onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.2)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"}>
                 <Icon name="download" size={13}/>{" \u5bfc\u51fa\u6570\u636e"}
