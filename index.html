@@ -386,6 +386,9 @@
       const syncTimerRef = useRef(null);
       const initialLoadDone = useRef(false);
       const isLoadingFromCloud = useRef(false);
+      const lastPushTime = useRef(0);
+      const lastPullTime = useRef(0);
+      const skipNextPull = useRef(false);
 
       const getAllData = () => ({todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes});
 
@@ -414,13 +417,18 @@
 
       const syncToCloud = async () => {
         if (!_supabase || !supaUser) return;
+        if (isLoadingFromCloud.current) return;
+        skipNextPull.current = true;
         setCloudSyncStatus("syncing");
         try {
+          var pushTime = Date.now();
           await _supabase.from("workstation_data").upsert({user_id: supaUser.id, data: getAllData(), updated_at: new Date().toISOString()});
+          lastPushTime.current = pushTime;
           setCloudSyncStatus("synced");
-          setTimeout(() => setCloudSyncStatus("idle"), 2000);
+          setTimeout(function() { setCloudSyncStatus("idle"); skipNextPull.current = false; }, 5000);
         } catch(e) {
           setCloudSyncStatus("error");
+          skipNextPull.current = false;
         }
       };
 
@@ -434,6 +442,7 @@
           const {data, error} = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", user.id).maybeSingle();
           if (data && data.data) {
             applyCloudData(data.data);
+            lastPullTime.current = new Date(data.updated_at).getTime();
             hasCloudData = true;
           }
         } catch(e) {}
@@ -475,24 +484,35 @@
 
       const handleForceSync = async () => {
         if (!_supabase || !supaUser) return;
+        skipNextPull.current = true;
         setCloudSyncStatus("syncing");
         try {
+          var pushTime = Date.now();
           await _supabase.from("workstation_data").upsert({user_id: supaUser.id, data: getAllData(), updated_at: new Date().toISOString()});
+          lastPushTime.current = pushTime;
           setCloudSyncStatus("synced");
-          setTimeout(() => setCloudSyncStatus("idle"), 2000);
+          setTimeout(function() { setCloudSyncStatus("idle"); skipNextPull.current = false; }, 5000);
         } catch(e) {
           setCloudSyncStatus("error");
+          skipNextPull.current = false;
         }
       };
 
       const pullFromCloud = async () => {
-        if (!_supabase || !supaUser || !initialLoadDone.current || isLoadingFromCloud.current) return;
+        if (!_supabase || !supaUser || !initialLoadDone.current) return;
+        if (isLoadingFromCloud.current) return;
+        if (skipNextPull.current) { skipNextPull.current = false; return; }
+        if (Date.now() - lastPushTime.current < 5000) return;
         isLoadingFromCloud.current = true;
         setCloudSyncStatus("syncing");
         try {
           var result = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", supaUser.id).maybeSingle();
           if (result.data && result.data.data) {
-            applyCloudData(result.data.data);
+            var cloudTime = new Date(result.data.updated_at).getTime();
+            if (cloudTime > lastPullTime.current + 1000) {
+              applyCloudData(result.data.data);
+              lastPullTime.current = cloudTime;
+            }
           }
           setCloudSyncStatus("synced");
           setTimeout(function() { setCloudSyncStatus("idle"); }, 2000);
