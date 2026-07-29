@@ -1,16 +1,16 @@
 {
-  "name": "个人工作台",
-  "short_name": "工作台",
-  "description": "个人日程管理、习惯打卡、番茄时钟、工作日报与项目周报",
+  "name": "海贼工作台",
+  "short_name": "海贼台",
+  "description": "海贼王主题个人工作台：日程管理、习惯打卡、番茄时钟、运动记录、心情日记、饮食记录、记账、读书笔记、工作日报、航海周报，支持云同步",
   "start_url": "./个人工作台.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f9fafb",
-  "theme_color": "#1a1f36",
+  "background_color": "#FDF5E6",
+  "theme_color": "#1B2838",
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%231a1f36'/><text x='256' y='340' text-anchor='middle' font-size='280' fill='white' font-family='Arial' font-weight='bold'>W</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%231B2838'/><text x='256' y='340' text-anchor='middle' font-size='280' fill='%23F4D03F' font-family='Arial' font-weight='bold'>W</text></svg>",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"

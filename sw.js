@@ -1,8 +1,18 @@
-const CACHE_NAME = "workstation-v1";
+const CACHE_NAME = "pirate-workstation-v3";
 const ASSETS = [
   "./",
   "./个人工作台.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./avatars/luffy.png",
+  "./avatars/zoro.png",
+  "./avatars/chopper.png",
+  "./avatars/robin.png",
+  "./avatars/nami.png",
+  "./avatars/sanji.png",
+  "./avatars/brook.png",
+  "./avatars/usopp.png",
+  "./avatars/ace.png",
+  "./avatars/law.png"
 ];
 
 self.addEventListener("install", (e) => {
