@@ -385,6 +385,7 @@
       // ── Supabase Auth + Cloud Sync ──
       const syncTimerRef = useRef(null);
       const initialLoadDone = useRef(false);
+      const isLoadingFromCloud = useRef(false);
 
       const getAllData = () => ({todos,checkins,dailys,weeklys,habits,habitCheckins,pomoSessions,exercises,moods,meals,finances,notes,expenseCategories,incomeCategories,navOrder,customExTypes});
 
@@ -427,6 +428,7 @@
 
       const loadFromCloud = async (user) => {
         if (!_supabase || !user) return;
+        isLoadingFromCloud.current = true;
         let hasCloudData = false;
         try {
           const {data, error} = await _supabase.from("workstation_data").select("data,updated_at").eq("user_id", user.id).maybeSingle();
@@ -438,7 +440,9 @@
         initialLoadDone.current = true;
         setCloudReady(true);
         if (!hasCloudData) {
-          setTimeout(syncToCloud, 500);
+          setTimeout(function() { isLoadingFromCloud.current = false; syncToCloud(); }, 500);
+        } else {
+          setTimeout(function() { isLoadingFromCloud.current = false; }, 2000);
         }
       };
 
@@ -504,6 +508,7 @@
       // Debounced cloud sync on data change
       useEffect(() => {
         if (!supaUser || !initialLoadDone.current) return;
+        if (isLoadingFromCloud.current) return;
         if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
         syncTimerRef.current = setTimeout(syncToCloud, 1500);
         return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
