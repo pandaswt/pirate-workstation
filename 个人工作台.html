@@ -170,8 +170,8 @@
       if (!c) return null;
       return (
         <img src={"./avatars/"+name+".png"} alt={c.char}
-          style={{width:size,height:size,borderRadius:"50%",border:"2px solid "+c.border,flexShrink:0,objectFit:"cover",boxShadow:"0 2px 4px rgba(0,0,0,0.2)"}}
-          onError={function(e){e.target.style.display="none";}}
+          style={{width:size,height:size,borderRadius:"50%",border:"2px solid "+c.border,flexShrink:0,objectFit:"cover",boxShadow:"0 2px 4px rgba(0,0,0,0.2)",background:c.bg,color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:size*0.45,fontWeight:700}}
+          onError={function(e){var el=e.target;el.style.display="none";var fb=document.createElement("span");fb.textContent=c.char;fb.style.cssText="width:"+size+"px;height:"+size+"px;border-radius:50%;border:2px solid "+c.border+";background:"+c.bg+";color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:"+(size*0.45)+"px;font-weight:700;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.2)";if(el.parentNode)el.parentNode.insertBefore(fb,el);}}
         />
       );
     };
