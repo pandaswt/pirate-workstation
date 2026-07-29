@@ -469,6 +469,18 @@
         setSupaUser(null);
       };
 
+      const handleForceSync = async () => {
+        if (!_supabase || !supaUser) return;
+        setCloudSyncStatus("syncing");
+        try {
+          await _supabase.from("workstation_data").upsert({user_id: supaUser.id, data: getAllData(), updated_at: new Date().toISOString()});
+          setCloudSyncStatus("synced");
+          setTimeout(() => setCloudSyncStatus("idle"), 2000);
+        } catch(e) {
+          setCloudSyncStatus("error");
+        }
+      };
+
       // Check session on mount
       useEffect(() => {
         if (!_supabase) return;
@@ -1106,6 +1118,10 @@
                         <span style={{fontSize:"0.7rem",color:"rgba(255,255,255,0.5)",flex:1}}>
                           {cloudSyncStatus==="syncing" ? "\u540c\u6b65\u4e2d..." : cloudSyncStatus==="synced" ? "\u5df2\u540c\u6b65" : cloudSyncStatus==="error" ? "\u540c\u6b65\u5931\u8d25" : "\u4e91\u7aef\u5df2\u8fde\u63a5"}
                         </span>
+                        <button onClick={handleForceSync} disabled={cloudSyncStatus==="syncing"}
+                          style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:cloudSyncStatus==="syncing"?"not-allowed":"pointer",padding:"2px 4px"}}>
+                          {cloudSyncStatus==="syncing" ? "\u2b6f" : "\u21bb"}{"\u540c\u6b65"}
+                        </button>
                         <button onClick={handleSupaLogout} style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:"pointer"}}>{"\u767b\u51fa"}</button>
                       </div>
                     )}
@@ -1170,6 +1186,12 @@
                   <span style={{fontSize:"0.7rem",color:"rgba(255,255,255,0.5)",flex:1}}>
                     {cloudSyncStatus==="syncing" ? "\u540c\u6b65\u4e2d..." : cloudSyncStatus==="synced" ? "\u5df2\u540c\u6b65" : cloudSyncStatus==="error" ? "\u540c\u6b65\u5931\u8d25" : "\u4e91\u7aef\u5df2\u8fde\u63a5"}
                   </span>
+                  <button onClick={handleForceSync} disabled={cloudSyncStatus==="syncing"}
+                    style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:cloudSyncStatus==="syncing"?"not-allowed":"pointer",padding:"2px 4px"}}
+                    onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
+                    onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.4)"}>
+                    {cloudSyncStatus==="syncing" ? "\u2b6f" : "\u21bb"}{"\u540c\u6b65"}
+                  </button>
                   <button onClick={handleSupaLogout} style={{fontSize:"0.65rem",color:"rgba(255,255,255,0.4)",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}}
                     onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
                     onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.4)"}>
